@@ -1,0 +1,30 @@
+@import "tailwindcss";
+
+:root {
+  --background: #0d0d0f;
+  --foreground: #f5f5f5;
+  --nexorder-card: #1a1a1d;
+  --nexorder-card-hover: #232327;
+  --nexorder-border: #2a2a2e;
+  --nexorder-wine: #7c1f3d;
+  --nexorder-wine-hover: #93234a;
+  --nexorder-text-muted: #a1a1aa;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--nexorder-card);
+  --color-card-hover: var(--nexorder-card-hover);
+  --color-border: var(--nexorder-border);
+  --color-wine: var(--nexorder-wine);
+  --color-wine-hover: var(--nexorder-wine-hover);
+  --color-muted: var(--nexorder-text-muted);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
