@@ -12,7 +12,7 @@ export function useRealtimeOrders(companyId: string) {
     const supabase = createClient();
     const { data } = await supabase
       .from("orders")
-      .select("*, order_items(*)")
+      .select("*, order_items(*), addresses(*)")
       .eq("company_id", companyId)
       .order("created_at", { ascending: true });
 
@@ -34,6 +34,11 @@ export function useRealtimeOrders(companyId: string) {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "order_items" },
+        () => fetchOrders()
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "addresses" },
         () => fetchOrders()
       )
       .subscribe();

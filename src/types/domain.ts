@@ -54,6 +54,7 @@ export interface Order {
   concluded_at: string | null;
   archived_at: string | null;
   order_items?: OrderItem[];
+  addresses?: Address[];
 }
 
 export interface PrepTimes {
@@ -120,15 +121,15 @@ export interface Product {
 
 export interface Address {
   id: string;
-  company_id: string;
-  customer_name: string;
-  street: string;
-  number: string;
+  order_id: string;
+  street: string | null;
+  number: string | null;
   complement: string | null;
-  neighborhood: string;
-  city: string;
-  state: string;
-  zip_code: string;
+  neighborhood: string | null;
+  city: string | null;
+  state: string | null;
+  zip_code: string | null;
+  reference: string | null;
 }
 
 export interface CompanySettings {
