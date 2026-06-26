@@ -68,8 +68,10 @@ export interface Category {
   id: string;
   company_id: string;
   name: string;
-  position: number;
-  available: boolean;
+  icon: string | null;
+  display_order: number;
+  active: boolean;
+  created_at: string | null;
 }
 
 export interface ProductSize {
@@ -79,6 +81,7 @@ export interface ProductSize {
   slices: number | null;
   max_flavors: number;
   price: number;
+  display_order: number;
 }
 
 export interface Flavor {
@@ -95,28 +98,30 @@ export interface Addon {
   company_id: string;
   name: string;
   price: number;
-  available: boolean;
+  active: boolean;
 }
 
 export interface Border {
   id: string;
   company_id: string;
   name: string;
-  prices_by_size: Record<string, number>;
-  available: boolean;
+  prices: Record<string, number>;
+  active: boolean;
 }
 
 export interface Product {
   id: string;
   company_id: string;
   category_id: string | null;
-  type: "pizza" | "comum";
+  product_type: "pizza" | "comum";
   name: string;
   description: string | null;
   image_url: string | null;
   base_price: number;
-  available: boolean;
-  position: number;
+  active: boolean;
+  created_at: string | null;
+  product_sizes?: ProductSize[];
+  product_flavors?: { flavor_id: string }[];
 }
 
 export interface Address {
