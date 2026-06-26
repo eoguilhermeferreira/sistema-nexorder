@@ -5,12 +5,13 @@ import { useRealtimeOrders } from "@/lib/hooks/useRealtimeOrders";
 import { createClient } from "@/lib/supabase/client";
 import { StatCard } from "@/components/admin/StatCard";
 import { OrderCard } from "@/components/admin/OrderCard";
-import { DEMO_COMPANY_ID } from "@/lib/constants";
+import { useCompany } from "@/contexts/CompanyContext";
 import { formatCurrency, isToday } from "@/lib/format";
 import type { PrepTimes } from "@/types/domain";
 
 export default function DashboardPage() {
-  const { orders, loading } = useRealtimeOrders(DEMO_COMPANY_ID);
+  const company = useCompany();
+  const { orders, loading } = useRealtimeOrders(company.id);
   const [prepTimes, setPrepTimes] = useState<PrepTimes | null>(null);
 
   useEffect(() => {
@@ -18,10 +19,10 @@ export default function DashboardPage() {
     supabase
       .from("prep_times")
       .select("*")
-      .eq("company_id", DEMO_COMPANY_ID)
+      .eq("company_id", company.id)
       .single()
       .then(({ data }) => setPrepTimes(data));
-  }, []);
+  }, [company.id]);
 
   const todayOrders = orders.filter((o) => isToday(o.created_at));
   const emPreparo = orders.filter((o) => o.status === "em_preparo");

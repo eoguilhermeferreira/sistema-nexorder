@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 
 const menuItems = [
   { href: "/dashboard", label: "Dashboard", icon: "🏠" },
@@ -21,6 +22,14 @@ interface SidebarProps {
 
 export function Sidebar({ companyName, companyEmoji = "🍕", badges = {} }: SidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
+
+  async function handleLogout() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/login");
+    router.refresh();
+  }
 
   return (
     <aside className="flex h-screen w-64 flex-col border-r border-border bg-card px-4 py-6">
@@ -62,6 +71,14 @@ export function Sidebar({ companyName, companyEmoji = "🍕", badges = {} }: Sid
           );
         })}
       </nav>
+
+      <button
+        onClick={handleLogout}
+        className="mt-2 flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted hover:bg-card-hover hover:text-foreground"
+      >
+        <span>🚪</span>
+        <span>Sair</span>
+      </button>
     </aside>
   );
 }

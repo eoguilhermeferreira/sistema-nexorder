@@ -4,12 +4,13 @@ import { useEffect, useState } from "react";
 import { useRealtimeOrders } from "@/lib/hooks/useRealtimeOrders";
 import { createClient } from "@/lib/supabase/client";
 import { OrderCard } from "@/components/admin/OrderCard";
-import { DEMO_COMPANY_ID } from "@/lib/constants";
+import { useCompany } from "@/contexts/CompanyContext";
 import { printOrder } from "@/lib/print";
 import type { PrepTimes } from "@/types/domain";
 
 export default function CozinhaPage() {
-  const { orders, refetch } = useRealtimeOrders(DEMO_COMPANY_ID);
+  const company = useCompany();
+  const { orders, refetch } = useRealtimeOrders(company.id);
   const [prepTimes, setPrepTimes] = useState<PrepTimes | null>(null);
   const [savingPrepTimes, setSavingPrepTimes] = useState(false);
 
@@ -18,10 +19,10 @@ export default function CozinhaPage() {
     supabase
       .from("prep_times")
       .select("*")
-      .eq("company_id", DEMO_COMPANY_ID)
+      .eq("company_id", company.id)
       .single()
       .then(({ data }) => setPrepTimes(data));
-  }, []);
+  }, [company.id]);
 
   const aguardando = orders.filter((o) => o.status === "aguardando_aceite");
   const emPreparo = orders.filter((o) => o.status === "em_preparo");
@@ -61,7 +62,7 @@ export default function CozinhaPage() {
         table_minutes: prepTimes.table_minutes,
         updated_at: new Date().toISOString(),
       })
-      .eq("company_id", DEMO_COMPANY_ID);
+      .eq("company_id", company.id);
     setSavingPrepTimes(false);
   }
 
