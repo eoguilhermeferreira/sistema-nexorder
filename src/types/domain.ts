@@ -140,6 +140,28 @@ export interface CompanySettings {
   realtime_enabled: boolean;
 }
 
+export type PaymentStatus = "pendente" | "pago";
+
+export interface TableCustomer {
+  id: string;
+  table_id: string;
+  name: string;
+  subtotal: number | null;
+  payment_status: PaymentStatus;
+  payment_method: string | null;
+  created_at: string | null;
+}
+
+export interface TableRestaurant {
+  id: string;
+  company_id: string;
+  number: number;
+  status: TableStatus;
+  qr_code_url: string | null;
+  created_at: string | null;
+  table_customers?: TableCustomer[];
+}
+
 export interface BusinessHours {
   id: string;
   company_id: string;
