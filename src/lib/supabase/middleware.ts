@@ -31,7 +31,7 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname.startsWith("/retiradas") ||
     request.nextUrl.pathname.startsWith("/entregas") ||
     request.nextUrl.pathname.startsWith("/mesas") ||
-    request.nextUrl.pathname.startsWith("/cardapio-admin") ||
+    request.nextUrl.pathname === "/cardapio" ||
     request.nextUrl.pathname.startsWith("/configuracoes") ||
     request.nextUrl.pathname.startsWith("/onboarding");
 
