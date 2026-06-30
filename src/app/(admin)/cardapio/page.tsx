@@ -5,9 +5,9 @@ import { useCompany } from "@/contexts/CompanyContext";
 import { useCatalog } from "@/lib/hooks/useCatalog";
 import { createClient } from "@/lib/supabase/client";
 import { formatCurrency } from "@/lib/format";
-import type { Category, Product, Addon } from "@/types/domain";
+import type { Category, Product, Addon, ProductSize } from "@/types/domain";
 
-type Tab = "categorias" | "adicionais" | "importar";
+type Tab = "categorias" | "tamanhos" | "adicionais" | "importar";
 
 export default function CardapioAdminPage() {
   const company = useCompany();
@@ -35,9 +35,10 @@ export default function CardapioAdminPage() {
         </div>
       </div>
 
-      <div className="mt-6 flex gap-1 rounded-lg bg-card-hover p-1 w-fit">
+      <div className="mt-6 flex gap-1 rounded-lg bg-card-hover p-1 w-fit flex-wrap">
         {([
           ["categorias", "Categorias"],
+          ["tamanhos", "Tamanhos"],
           ["adicionais", "Adicionais"],
           ["importar", "Importar Cardápio"],
         ] as [Tab, string][]).map(([key, label]) => (
@@ -53,6 +54,7 @@ export default function CardapioAdminPage() {
 
       <div className="mt-6">
         {tab === "categorias" && <CategoriasTab companyId={company.id} catalog={catalog} />}
+        {tab === "tamanhos" && <TamanhosTab companyId={company.id} catalog={catalog} />}
         {tab === "adicionais" && <AdicionaisTab companyId={company.id} catalog={catalog} />}
         {tab === "importar" && <ImportarCardapioTab companyId={company.id} catalog={catalog} />}
       </div>
@@ -292,6 +294,154 @@ function PizzaConfig({
           {flavors.length === 0 && <p className="text-xs text-muted">Cadastre sabores na aba &quot;Sabores&quot;.</p>}
         </div>
       </div>
+    </div>
+  );
+}
+
+// ─── TamanhosTab ───────────────────────────────────────────────────────────────
+
+function TamanhosTab({ companyId, catalog }: { companyId: string; catalog: Catalog }) {
+  const { products, refetch } = catalog;
+  const pizzaProducts = products.filter((p) => p.product_type === "pizza");
+
+  const [selectedProductId, setSelectedProductId] = useState<string>(pizzaProducts[0]?.id ?? "");
+  const [sizeName, setSizeName] = useState("");
+  const [sizePrice, setSizePrice] = useState("");
+  const [sizeSlices, setSizeSlices] = useState("");
+  const [maxFlavors, setMaxFlavors] = useState("1");
+  const [saving, setSaving] = useState(false);
+
+  const selectedProduct = pizzaProducts.find((p) => p.id === selectedProductId);
+  const sizes = [...(selectedProduct?.product_sizes ?? [])].sort((a, b) => a.price - b.price);
+
+  async function addSize() {
+    if (!selectedProductId || !sizeName.trim()) return;
+    const price = Number(sizePrice.replace(",", "."));
+    if (!Number.isFinite(price) || price <= 0) return;
+    setSaving(true);
+    const supabase = createClient();
+    await supabase.from("product_sizes").insert({
+      product_id: selectedProductId,
+      name: sizeName.trim(),
+      price,
+      slices: sizeSlices ? Number(sizeSlices) : null,
+      max_flavors: Number(maxFlavors) || 1,
+      display_order: sizes.length,
+    });
+    setSizeName("");
+    setSizePrice("");
+    setSizeSlices("");
+    setMaxFlavors("1");
+    setSaving(false);
+    refetch();
+  }
+
+  async function deleteSize(id: string) {
+    const supabase = createClient();
+    await supabase.from("product_sizes").delete().eq("id", id);
+    refetch();
+  }
+
+  if (pizzaProducts.length === 0) {
+    return (
+      <div className="max-w-2xl">
+        <p className="text-sm text-muted">
+          Nenhum produto do tipo pizza encontrado. Importe o cardápio primeiro ou cadastre um produto pizza.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-2xl space-y-4">
+      {pizzaProducts.length > 1 && (
+        <div className="rounded-xl border border-border bg-card p-4">
+          <p className="text-sm font-medium text-foreground mb-2">Produto</p>
+          <select
+            value={selectedProductId}
+            onChange={(e) => setSelectedProductId(e.target.value)}
+            className="w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground"
+          >
+            {pizzaProducts.map((p) => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+        <p className="text-sm font-medium text-foreground">Adicionar tamanho</p>
+        <div className="grid grid-cols-2 gap-2">
+          <input
+            value={sizeName}
+            onChange={(e) => setSizeName(e.target.value)}
+            placeholder="Nome (ex: Grande)"
+            className="col-span-2 rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground"
+          />
+          <input
+            value={sizePrice}
+            onChange={(e) => setSizePrice(e.target.value)}
+            placeholder="Preço (ex: 50,00)"
+            className="rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground"
+          />
+          <input
+            value={sizeSlices}
+            onChange={(e) => setSizeSlices(e.target.value)}
+            placeholder="Fatias (ex: 8)"
+            type="number"
+            className="rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground"
+          />
+          <div className="col-span-2">
+            <label className="text-xs text-muted">Máximo de sabores permitidos</label>
+            <select
+              value={maxFlavors}
+              onChange={(e) => setMaxFlavors(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground"
+            >
+              {[1, 2, 3, 4].map((n) => (
+                <option key={n} value={n}>{n} sabor{n > 1 ? "es" : ""}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <button
+          onClick={addSize}
+          disabled={saving || !sizeName.trim() || !sizePrice}
+          className="w-full rounded-lg bg-wine px-4 py-2 text-sm font-medium text-white hover:bg-wine-hover disabled:opacity-50"
+        >
+          {saving ? "Salvando..." : "Adicionar Tamanho"}
+        </button>
+      </div>
+
+      {sizes.length > 0 ? (
+        <div className="rounded-xl border border-border bg-card overflow-hidden">
+          <p className="border-b border-border bg-card-hover px-4 py-2 text-xs font-semibold text-muted uppercase tracking-wide">
+            Tamanhos cadastrados — {selectedProduct?.name}
+          </p>
+          {sizes.map((size) => (
+            <div key={size.id} className="flex items-center justify-between border-b border-border px-4 py-3 last:border-0">
+              <div>
+                <p className="text-sm font-medium text-foreground">{size.name}</p>
+                <p className="text-xs text-muted">
+                  {size.slices ? `${size.slices} fatias · ` : ""}
+                  até {size.max_flavors} sabor{size.max_flavors > 1 ? "es" : ""}
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-semibold text-wine">{formatCurrency(size.price)}</span>
+                <button
+                  onClick={() => deleteSize(size.id)}
+                  className="rounded px-2 py-0.5 text-xs text-red-400 hover:bg-red-400/10"
+                >
+                  Remover
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm text-muted">Nenhum tamanho cadastrado ainda para este produto.</p>
+      )}
     </div>
   );
 }
