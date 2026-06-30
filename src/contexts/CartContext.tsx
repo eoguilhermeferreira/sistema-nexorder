@@ -6,6 +6,7 @@ import type { OrderItemFlavor, AddonSelection } from "@/types/domain";
 export interface CartItem {
   id: string;
   product_name: string;
+  category_name: string | null;
   quantity: number;
   size_id: string | null;
   size_name: string | null;

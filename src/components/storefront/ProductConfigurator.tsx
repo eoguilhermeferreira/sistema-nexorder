@@ -154,11 +154,13 @@ function AddonRow({ addon, qty, onInc, onDec }: { addon: Addon; qty: number; onI
 
 export function ProductConfigurator({
   product,
+  categoryName,
   flavors,
   addons,
   onClose,
 }: {
   product: Product;
+  categoryName?: string;
   flavors: Flavor[];
   addons: Addon[];
   onClose: () => void;
@@ -179,14 +181,18 @@ export function ProductConfigurator({
     [flavors, availableFlavorIds]
   );
 
-  // separate border addons from regular addons
+  // filter addons by category
+  const categoryAddons = useMemo(
+    () => addons.filter((a) => a.category_id === product.category_id),
+    [addons, product.category_id]
+  );
   const borderAddons = useMemo(
-    () => addons.filter((a) => a.group?.toLowerCase().includes("borda")),
-    [addons]
+    () => categoryAddons.filter((a) => a.group?.toLowerCase().includes("borda")),
+    [categoryAddons]
   );
   const regularAddonGroups = useMemo(
-    () => groupAddons(addons.filter((a) => !a.group?.toLowerCase().includes("borda"))),
-    [addons]
+    () => groupAddons(categoryAddons.filter((a) => !a.group?.toLowerCase().includes("borda"))),
+    [categoryAddons]
   );
 
   const [sizeId, setSizeId] = useState<string>(sizes[0]?.id ?? "");
@@ -261,6 +267,7 @@ export function ProductConfigurator({
 
     addItem({
       product_name: product.name,
+      category_name: categoryName ?? null,
       quantity,
       size_id: selectedSize?.id ?? null,
       size_name: selectedSize?.name ?? null,

@@ -186,11 +186,22 @@ function CheckoutModal({ storefront, onClose }: { storefront: ReturnType<typeof 
         <div className="mt-4 space-y-2">
           {items.map((item) => (
             <div key={item.id} className="flex items-center justify-between rounded-lg bg-card-hover px-3 py-2 text-sm">
-              <div>
-                <p className="text-foreground">{item.quantity}x {item.product_name}{item.size_name ? ` (${item.size_name})` : ""}</p>
-                {item.flavors && <p className="text-xs text-muted">{item.flavors.map((f) => f.name).join(", ")}</p>}
+              <div className="flex-1 min-w-0">
+                {item.category_name && (
+                  <p className="text-xs text-muted">{item.category_name}</p>
+                )}
+                <p className="text-foreground font-medium">
+                  {item.quantity}x {item.product_name}{item.size_name ? ` (${item.size_name})` : ""}
+                </p>
+                {item.flavors && item.flavors.length > 0 && (
+                  <p className="text-xs text-muted">{item.flavors.map((f) => f.name).join(", ")}</p>
+                )}
+                {item.additions && item.additions.length > 0 && (
+                  <p className="text-xs text-muted">+ {item.additions.map((a) => a.qty > 1 ? `${a.name} x${a.qty}` : a.name).join(", ")}</p>
+                )}
+                {item.notes && <p className="text-xs italic text-muted">{item.notes}</p>}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex shrink-0 items-center gap-2 ml-2">
                 <span className="text-muted">{formatCurrency(item.price * item.quantity)}</span>
                 <button onClick={() => removeItem(item.id)} className="text-xs text-red-400">remover</button>
               </div>

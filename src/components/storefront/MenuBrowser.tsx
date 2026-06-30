@@ -18,7 +18,7 @@ export function MenuBrowser({
   flavors: Flavor[];
   addons: Addon[];
 }) {
-  const [activeProduct, setActiveProduct] = useState<Product | null>(null);
+  const [activeProduct, setActiveProduct] = useState<{ product: Product; categoryName: string } | null>(null);
   const [activeCatId, setActiveCatId] = useState<string | null>(null);
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
@@ -54,7 +54,8 @@ export function MenuBrowser({
       <div className="mt-4 space-y-8">
         {sortedCategories.map((category) => {
           const categoryProducts = products.filter((p) => p.category_id === category.id);
-          const categoryFlavors = (flavors as any[]).filter((f) => f.category_id === category.id) as Flavor[];
+          const categoryFlavors = flavors.filter((f) => (f as any).category_id === category.id);
+          const categoryAddons = addons.filter((a) => a.category_id === category.id);
 
           if (category.is_pizza) {
             if (categoryFlavors.length === 0) return null;
@@ -64,7 +65,7 @@ export function MenuBrowser({
                 <PizzaSection
                   category={category}
                   flavors={categoryFlavors}
-                  addons={addons}
+                  addons={categoryAddons}
                 />
               </div>
             );
@@ -78,7 +79,7 @@ export function MenuBrowser({
                 {categoryProducts.map((product) => (
                   <button
                     key={product.id}
-                    onClick={() => setActiveProduct(product)}
+                    onClick={() => setActiveProduct({ product, categoryName: category.name })}
                     className="flex w-full items-center gap-4 px-4 py-3 text-left hover:bg-card-hover"
                   >
                     <div className="min-w-0 flex-1">
@@ -107,7 +108,8 @@ export function MenuBrowser({
 
       {activeProduct && (
         <ProductConfigurator
-          product={activeProduct}
+          product={activeProduct.product}
+          categoryName={activeProduct.categoryName}
           flavors={flavors}
           addons={addons}
           onClose={() => setActiveProduct(null)}
@@ -134,6 +136,8 @@ function PizzaSection({
   const [sizes, setSizes] = useState<CategorySize[]>([]);
   const [selectedSizeId, setSelectedSizeId] = useState<string>("");
   const [selectedFlavorIds, setSelectedFlavorIds] = useState<string[]>([]);
+  const [addonQtys, setAddonQtys] = useState<Record<string, number>>({});
+  const [notes, setNotes] = useState("");
   const [sizeHighlight, setSizeHighlight] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
@@ -165,20 +169,42 @@ function PizzaSection({
     }
     setSelectedFlavorIds((prev) => {
       if (prev.includes(flavorId)) return prev.filter((id) => id !== flavorId);
-      if (prev.length >= maxFlavors) {
-        // replace first selected if at max and max === 1, otherwise ignore
-        if (maxFlavors === 1) return [flavorId];
-        return prev;
-      }
+      if (prev.length >= maxFlavors) return maxFlavors === 1 ? [flavorId] : prev;
       return [...prev, flavorId];
+    });
+  }
+
+  function incAddon(id: string) {
+    setAddonQtys((prev) => ({ ...prev, [id]: (prev[id] ?? 0) + 1 }));
+  }
+
+  function decAddon(id: string) {
+    setAddonQtys((prev) => {
+      const next = (prev[id] ?? 0) - 1;
+      if (next <= 0) { const n = { ...prev }; delete n[id]; return n; }
+      return { ...prev, [id]: next };
     });
   }
 
   function addToCart() {
     if (!selectedSize || selectedFlavorIds.length === 0) return;
     const selected = flavors.filter((f) => selectedFlavorIds.includes(f.id));
+
+    const addonsTotal = Object.entries(addonQtys).reduce((sum, [id, qty]) => {
+      const a = addons.find((x) => x.id === id);
+      return sum + (a?.price ?? 0) * qty;
+    }, 0);
+
+    const addonsArr = Object.entries(addonQtys)
+      .filter(([, qty]) => qty > 0)
+      .map(([id, qty]) => {
+        const a = addons.find((x) => x.id === id)!;
+        return { id, name: a.name, price: a.price, qty };
+      });
+
     addItem({
       product_name: category.name,
+      category_name: null,
       quantity,
       size_id: selectedSize.id,
       size_name: selectedSize.name,
@@ -186,13 +212,16 @@ function PizzaSection({
       border_id: null,
       border_name: null,
       border_price: null,
-      additions: null,
+      additions: addonsArr.length > 0 ? addonsArr : null,
       removed_ingredients: null,
-      notes: null,
-      price: selectedSize.price,
+      notes: notes.trim() || null,
+      price: selectedSize.price + addonsTotal,
     });
+
     setSelectedSizeId("");
     setSelectedFlavorIds([]);
+    setAddonQtys({});
+    setNotes("");
     setQuantity(1);
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
@@ -206,9 +235,7 @@ function PizzaSection({
       <div
         ref={sizeRef}
         className={`rounded-xl border p-4 transition-all duration-300 ${
-          sizeHighlight
-            ? "border-wine bg-wine/5 ring-2 ring-wine"
-            : "border-border bg-card"
+          sizeHighlight ? "border-wine bg-wine/5 ring-2 ring-wine" : "border-border bg-card"
         }`}
       >
         <p className="text-xs font-semibold uppercase tracking-wide text-muted">
@@ -282,29 +309,58 @@ function PizzaSection({
         })}
       </div>
 
+      {/* addons */}
+      {addons.length > 0 && (
+        <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
+          <div className="px-4 py-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted">Adicionais</p>
+          </div>
+          {addons.map((addon) => {
+            const qty = addonQtys[addon.id] ?? 0;
+            return (
+              <div key={addon.id} className="flex items-center justify-between px-4 py-3">
+                <div>
+                  <p className="text-sm text-foreground">{addon.name}</p>
+                  {addon.price > 0 && <p className="text-xs text-wine">+{formatCurrency(addon.price)}</p>}
+                </div>
+                <div className="flex items-center gap-3">
+                  {qty > 0 && (
+                    <button onClick={() => decAddon(addon.id)} className="flex h-7 w-7 items-center justify-center rounded-full border border-border bg-card text-foreground hover:bg-card-hover">−</button>
+                  )}
+                  {qty > 0 && <span className="w-4 text-center text-sm font-medium">{qty}</span>}
+                  <button onClick={() => incAddon(addon.id)} className="flex h-7 w-7 items-center justify-center rounded-full border border-wine bg-wine/10 text-wine hover:bg-wine/20">+</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* notes */}
+      <div className="rounded-xl border border-border bg-card px-4 py-3">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted">Observações</p>
+        <textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          rows={2}
+          placeholder="Ex: sem cebola, bem assada..."
+          className="mt-2 w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-wine"
+        />
+      </div>
+
       {/* add to cart */}
       {canAdd && (
         <div className="flex items-center gap-3 rounded-xl border border-wine bg-card p-3">
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-card-hover text-foreground"
-            >
-              −
-            </button>
-            <span className="w-5 text-center text-sm font-semibold text-foreground">{quantity}</span>
-            <button
-              onClick={() => setQuantity((q) => q + 1)}
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-wine bg-wine/10 text-wine"
-            >
-              +
-            </button>
+            <button onClick={() => setQuantity((q) => Math.max(1, q - 1))} className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-card-hover text-foreground">−</button>
+            <span className="w-5 text-center text-sm font-semibold">{quantity}</span>
+            <button onClick={() => setQuantity((q) => q + 1)} className="flex h-8 w-8 items-center justify-center rounded-full border border-wine bg-wine/10 text-wine">+</button>
           </div>
           <button
             onClick={addToCart}
             className="flex-1 rounded-lg bg-wine px-4 py-2 text-sm font-semibold text-white hover:bg-wine-hover"
           >
-            {added ? "Adicionado!" : `Adicionar · ${formatCurrency(selectedSize!.price * quantity)}`}
+            {added ? "Adicionado!" : `Adicionar · ${formatCurrency((selectedSize!.price + Object.entries(addonQtys).reduce((s, [id, q]) => s + (addons.find(a => a.id === id)?.price ?? 0) * q, 0)) * quantity)}`}
           </button>
         </div>
       )}
