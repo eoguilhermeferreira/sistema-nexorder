@@ -27,7 +27,7 @@ export interface OrderItem {
   border_id: string | null;
   border_name: string | null;
   border_price: number | null;
-  additions: string[] | null;
+  additions: AddonSelection[] | null;
   removed_ingredients: string[] | null;
   notes: string | null;
   price: number;
@@ -98,15 +98,15 @@ export interface Addon {
   company_id: string;
   name: string;
   price: number;
+  group: string | null;
   active: boolean;
 }
 
-export interface Border {
+export interface AddonSelection {
   id: string;
-  company_id: string;
   name: string;
-  prices: Record<string, number>;
-  active: boolean;
+  price: number;
+  qty: number;
 }
 
 export interface Product {

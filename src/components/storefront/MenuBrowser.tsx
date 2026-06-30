@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { Category, Product, Flavor, Addon, Border } from "@/types/domain";
+import type { Category, Product, Flavor, Addon } from "@/types/domain";
 import { formatCurrency } from "@/lib/format";
 import { ProductConfigurator } from "./ProductConfigurator";
 
@@ -10,13 +10,11 @@ export function MenuBrowser({
   products,
   flavors,
   addons,
-  borders,
 }: {
   categories: Category[];
   products: Product[];
   flavors: Flavor[];
   addons: Addon[];
-  borders: Border[];
 }) {
   const [activeProduct, setActiveProduct] = useState<Product | null>(null);
 
@@ -63,7 +61,6 @@ export function MenuBrowser({
           product={activeProduct}
           flavors={flavors}
           addons={addons}
-          borders={borders}
           onClose={() => setActiveProduct(null)}
         />
       )}

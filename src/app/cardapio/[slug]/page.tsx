@@ -27,7 +27,7 @@ export default function CardapioPage() {
 }
 
 function CardapioContent({ storefront }: { storefront: ReturnType<typeof useStorefront> }) {
-  const { company, categories, products, flavors, addons, borders } = storefront;
+  const { company, categories, products, flavors, addons } = storefront;
   const [showCheckout, setShowCheckout] = useState(false);
   const { items, total } = useCart();
 
@@ -54,7 +54,7 @@ function CardapioContent({ storefront }: { storefront: ReturnType<typeof useStor
         {company.description && <p className="mt-3 text-sm text-muted">{company.description}</p>}
 
         <div className="mt-6">
-          <MenuBrowser categories={categories} products={products} flavors={flavors} addons={addons} borders={borders} />
+          <MenuBrowser categories={categories} products={products} flavors={flavors} addons={addons} />
         </div>
       </div>
 
@@ -139,6 +139,7 @@ function CheckoutModal({ storefront, onClose }: { storefront: ReturnType<typeof 
       return;
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await supabase.from("order_items").insert(
       items.map((item) => ({
         order_id: order.id,
@@ -150,11 +151,11 @@ function CheckoutModal({ storefront, onClose }: { storefront: ReturnType<typeof 
         border_id: item.border_id,
         border_name: item.border_name,
         border_price: item.border_price,
-        additions: item.additions,
+        additions: item.additions as unknown as import("@/types/database").Json,
         removed_ingredients: item.removed_ingredients,
         notes: item.notes,
         price: item.price,
-      }))
+      })) as any
     );
 
     if (type === "entrega") {

@@ -28,7 +28,7 @@ export default function MesaCardapioPage() {
 }
 
 function MesaContent({ storefront, numero }: { storefront: ReturnType<typeof useStorefront>; numero: string }) {
-  const { company, categories, products, flavors, addons, borders } = storefront;
+  const { company, categories, products, flavors, addons } = storefront;
   const { items, total, clear } = useCart();
 
   const [tableId, setTableId] = useState<string | null>(null);
@@ -108,6 +108,7 @@ function MesaContent({ storefront, numero }: { storefront: ReturnType<typeof use
       .single();
 
     if (order) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await supabase.from("order_items").insert(
         items.map((item) => ({
           order_id: order.id,
@@ -119,11 +120,11 @@ function MesaContent({ storefront, numero }: { storefront: ReturnType<typeof use
           border_id: item.border_id,
           border_name: item.border_name,
           border_price: item.border_price,
-          additions: item.additions,
+          additions: item.additions as unknown as import("@/types/database").Json,
           removed_ingredients: item.removed_ingredients,
           notes: item.notes,
           price: item.price,
-        }))
+        })) as any
       );
 
       await supabase
@@ -170,7 +171,7 @@ function MesaContent({ storefront, numero }: { storefront: ReturnType<typeof use
         </p>
 
         <div className="mt-6">
-          <MenuBrowser categories={categories} products={products} flavors={flavors} addons={addons} borders={borders} />
+          <MenuBrowser categories={categories} products={products} flavors={flavors} addons={addons} />
         </div>
       </div>
 

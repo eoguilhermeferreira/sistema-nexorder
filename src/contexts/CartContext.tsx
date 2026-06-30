@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
-import type { OrderItemFlavor } from "@/types/domain";
+import type { OrderItemFlavor, AddonSelection } from "@/types/domain";
 
 export interface CartItem {
   id: string;
@@ -13,7 +13,7 @@ export interface CartItem {
   border_id: string | null;
   border_name: string | null;
   border_price: number | null;
-  additions: string[] | null;
+  additions: AddonSelection[] | null;
   removed_ingredients: string[] | null;
   notes: string | null;
   price: number;

@@ -2,19 +2,18 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
-import type { Category, Product, Flavor, Addon, Border } from "@/types/domain";
+import type { Category, Product, Flavor, Addon } from "@/types/domain";
 
 export function useCatalog(companyId: string) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [flavors, setFlavors] = useState<Flavor[]>([]);
   const [addons, setAddons] = useState<Addon[]>([]);
-  const [borders, setBorders] = useState<Border[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchAll = useCallback(async () => {
     const supabase = createClient();
-    const [categoriesRes, productsRes, flavorsRes, addonsRes, bordersRes] = await Promise.all([
+    const [categoriesRes, productsRes, flavorsRes, addonsRes] = await Promise.all([
       supabase.from("categories").select("*").eq("company_id", companyId).order("display_order"),
       supabase
         .from("products")
@@ -23,14 +22,12 @@ export function useCatalog(companyId: string) {
         .order("created_at"),
       supabase.from("flavors").select("*").eq("company_id", companyId).order("name"),
       supabase.from("addons").select("*").eq("company_id", companyId).order("name"),
-      supabase.from("borders").select("*").eq("company_id", companyId).order("name"),
     ]);
 
     setCategories((categoriesRes.data as unknown as Category[]) ?? []);
     setProducts((productsRes.data as unknown as Product[]) ?? []);
     setFlavors((flavorsRes.data as unknown as Flavor[]) ?? []);
     setAddons((addonsRes.data as unknown as Addon[]) ?? []);
-    setBorders((bordersRes.data as unknown as Border[]) ?? []);
     setLoading(false);
   }, [companyId]);
 
@@ -38,5 +35,5 @@ export function useCatalog(companyId: string) {
     fetchAll();
   }, [fetchAll]);
 
-  return { categories, products, flavors, addons, borders, loading, refetch: fetchAll };
+  return { categories, products, flavors, addons, loading, refetch: fetchAll };
 }

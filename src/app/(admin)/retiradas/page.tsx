@@ -138,7 +138,7 @@ function OrderDetail({ order, onFinalize }: { order: Order; onFinalize: (id: str
               <p>Sabores: {item.flavors.map((f) => f.name).join(", ")}</p>
             )}
             {item.border_name && <p>Borda: {item.border_name}</p>}
-            {item.additions?.length ? <p>+ {item.additions.join(", ")}</p> : null}
+            {item.additions?.length ? <p>+ {(item.additions as unknown as { name: string; qty: number }[]).map((a) => a.qty > 1 ? `${a.name} x${a.qty}` : a.name).join(", ")}</p> : null}
             {item.removed_ingredients?.length ? <p>- {item.removed_ingredients.join(", ")}</p> : null}
             {item.notes && <p className="italic">{item.notes}</p>}
           </li>

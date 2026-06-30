@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
-import type { Category, Product, Flavor, Addon, Border, CompanySettings, BusinessHours } from "@/types/domain";
+import type { Category, Product, Flavor, Addon, CompanySettings, BusinessHours } from "@/types/domain";
 
 export interface StorefrontCompany {
   id: string;
@@ -28,7 +28,6 @@ export function useStorefront(slug: string) {
   const [products, setProducts] = useState<Product[]>([]);
   const [flavors, setFlavors] = useState<Flavor[]>([]);
   const [addons, setAddons] = useState<Addon[]>([]);
-  const [borders, setBorders] = useState<Border[]>([]);
   const [settings, setSettings] = useState<CompanySettings | null>(null);
   const [businessHours, setBusinessHours] = useState<BusinessHours[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,7 +51,7 @@ export function useStorefront(slug: string) {
     setCompany(companyRow);
 
     const companyId = companyRow.id;
-    const [categoriesRes, productsRes, flavorsRes, addonsRes, bordersRes, settingsRes, hoursRes] =
+    const [categoriesRes, productsRes, flavorsRes, addonsRes, settingsRes, hoursRes] =
       await Promise.all([
         supabase.from("categories").select("*").eq("company_id", companyId).eq("active", true).order("display_order"),
         supabase
@@ -63,7 +62,6 @@ export function useStorefront(slug: string) {
           .order("created_at"),
         supabase.from("flavors").select("*").eq("company_id", companyId).eq("available", true).order("name"),
         supabase.from("addons").select("*").eq("company_id", companyId).eq("active", true).order("name"),
-        supabase.from("borders").select("*").eq("company_id", companyId).eq("active", true).order("name"),
         supabase.from("company_settings").select("*").eq("company_id", companyId).single(),
         supabase.from("business_hours").select("*").eq("company_id", companyId).order("weekday"),
       ]);
@@ -72,7 +70,6 @@ export function useStorefront(slug: string) {
     setProducts((productsRes.data as unknown as Product[]) ?? []);
     setFlavors((flavorsRes.data as unknown as Flavor[]) ?? []);
     setAddons((addonsRes.data as unknown as Addon[]) ?? []);
-    setBorders((bordersRes.data as unknown as Border[]) ?? []);
     setSettings((settingsRes.data as unknown as CompanySettings) ?? null);
     setBusinessHours((hoursRes.data as unknown as BusinessHours[]) ?? []);
     setLoading(false);
@@ -82,5 +79,5 @@ export function useStorefront(slug: string) {
     fetchAll();
   }, [fetchAll]);
 
-  return { company, categories, products, flavors, addons, borders, settings, businessHours, loading, notFound, refetch: fetchAll };
+  return { company, categories, products, flavors, addons, settings, businessHours, loading, notFound, refetch: fetchAll };
 }
