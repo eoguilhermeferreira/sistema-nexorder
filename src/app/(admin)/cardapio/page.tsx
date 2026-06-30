@@ -295,61 +295,128 @@ function PizzaConfig({
 }
 
 type ParsedMenu = {
+  sizes: { name: string; price: number }[];
   products: { name: string; description: string | null; price: number }[];
   flavors: { name: string; ingredients: string[] }[];
   addons: { name: string; price: number }[];
   borders: { name: string; price: number }[];
 };
 
-const SECTION_HEADERS: Record<string, keyof ParsedMenu> = {
-  PRODUTOS: "products",
-  PRODUTO: "products",
-  SABORES: "flavors",
-  SABOR: "flavors",
-  ADICIONAIS: "addons",
-  ADICIONAL: "addons",
-  BORDAS: "borders",
-  BORDA: "borders",
-};
+type SectionKey = "sizes" | "products" | "flavors" | "addons" | "borders" | "ignore";
+
+function stripLeadingSymbols(line: string): string {
+  // Remove leading emoji and non-letter/non-digit characters (keep letters, digits, and accented chars)
+  return line.replace(/^[^\p{L}\p{N}]+/u, "").trim();
+}
+
+function extractPrice(segment: string): number {
+  const m = segment.match(/R\$\s*([\d]+(?:[.,]\d+)?)/);
+  if (m) {
+    const v = Number(m[1].replace(",", "."));
+    return Number.isFinite(v) ? v : 0;
+  }
+  const m2 = segment.match(/([\d]+(?:[.,]\d+)?)/);
+  if (m2) {
+    const v = Number(m2[1].replace(",", "."));
+    return Number.isFinite(v) ? v : 0;
+  }
+  return 0;
+}
+
+function detectSection(line: string): SectionKey | null {
+  const lower = line.toLowerCase();
+  if (/tamanho|tamanhos/.test(lower)) return "sizes";
+  if (/borda|bordas/.test(lower)) return "borders";
+  if (/adicional|adicionais/.test(lower)) return "addons";
+  if (/sabor|sabores/.test(lower)) return "flavors";
+  if (/promo/.test(lower)) return "ignore";
+  if (/produto|produtos/.test(lower)) return "products";
+  return null;
+}
 
 function parseMenuText(text: string): ParsedMenu {
-  const result: ParsedMenu = { products: [], flavors: [], addons: [], borders: [] };
-  let currentSection: keyof ParsedMenu = "products";
+  const result: ParsedMenu = { sizes: [], products: [], flavors: [], addons: [], borders: [] };
+  let currentSection: SectionKey = "products";
+  let pendingFlavorName: string | null = null;
 
   const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
 
   for (const line of lines) {
-    const headerKey = line.replace(/:$/, "").trim().toUpperCase();
-    if (SECTION_HEADERS[headerKey]) {
-      currentSection = SECTION_HEADERS[headerKey];
+    const clean = stripLeadingSymbols(line);
+    if (!clean) continue;
+
+    // Section header detection (stripped line, no price-like content)
+    const sec = detectSection(clean);
+    if (sec && !clean.match(/R\$/) && !clean.match(/—|–/)) {
+      currentSection = sec;
+      pendingFlavorName = null;
       continue;
     }
 
-    const parts = line.split("-").map((p) => p.trim()).filter(Boolean);
+    if (currentSection === "ignore") continue;
 
     if (currentSection === "flavors") {
-      const [name, ...rest] = parts;
-      if (!name) continue;
-      const ingredients = rest
-        .join(" - ")
-        .split(",")
-        .map((i) => i.trim())
-        .filter(Boolean);
-      result.flavors.push({ name, ingredients });
+      // Check for "Ingredientes:" line
+      const ingMatch = clean.match(/^[Ii]ngredientes?:\s*(.+)/);
+      if (ingMatch && pendingFlavorName) {
+        const raw = ingMatch[1].replace(/\.$/, "");
+        // split on comma, then handle trailing " e " before last item
+        const parts = raw.split(",").map((s) => s.trim()).filter(Boolean);
+        const ingredients: string[] = [];
+        for (let i = 0; i < parts.length; i++) {
+          if (i === parts.length - 1 && parts[i].includes(" e ")) {
+            const sub = parts[i].split(" e ").map((s) => s.trim()).filter(Boolean);
+            ingredients.push(...sub);
+          } else {
+            ingredients.push(parts[i]);
+          }
+        }
+        result.flavors.push({ name: pendingFlavorName, ingredients });
+        pendingFlavorName = null;
+        continue;
+      }
+      // Numbered flavor line: "01 – Nome" or "01 - Nome"
+      const numMatch = clean.match(/^\d+\s*[–—\-]\s*(.+)/);
+      if (numMatch) {
+        pendingFlavorName = numMatch[1].trim();
+        continue;
+      }
+      // Plain flavor line (legacy): "Nome - ingrediente1, ingrediente2"
+      const dashIdx = clean.search(/[–—\-]/);
+      if (dashIdx > 0) {
+        const name = clean.slice(0, dashIdx).trim();
+        const rest = clean.slice(dashIdx + 1).trim();
+        const ingredients = rest.split(",").map((s) => s.trim()).filter(Boolean);
+        result.flavors.push({ name, ingredients });
+      }
       continue;
     }
 
-    const last = parts[parts.length - 1];
-    const priceMatch = last?.match(/[\d.,]+/);
-    const parsedPrice = priceMatch ? Number(priceMatch[0].replace(",", ".")) : 0;
-    const price = Number.isFinite(parsedPrice) ? parsedPrice : 0;
-    const nameParts = priceMatch ? parts.slice(0, -1) : parts;
-    const name = nameParts[0] ?? line;
-    if (!name) continue;
+    // For sizes/borders/addons/products: split on em/en-dash or plain hyphen
+    const dashIdx = clean.search(/[–—]/);
+    if (dashIdx > 0) {
+      const namePart = clean.slice(0, dashIdx).trim();
+      const pricePart = clean.slice(dashIdx + 1).trim();
+      const price = extractPrice(pricePart);
+      if (!namePart) continue;
+      if (currentSection === "sizes") { result.sizes.push({ name: namePart, price }); continue; }
+      if (currentSection === "borders") { result.borders.push({ name: namePart, price }); continue; }
+      if (currentSection === "addons") { result.addons.push({ name: namePart, price }); continue; }
+      result.products.push({ name: namePart, description: null, price });
+      continue;
+    }
 
-    if (currentSection === "addons" || currentSection === "borders") {
-      result[currentSection].push({ name, price });
-    } else {
+    // Legacy plain-hyphen format: "Name - desc - price"
+    const parts = clean.split("-").map((p) => p.trim()).filter(Boolean);
+    if (parts.length >= 2) {
+      const last = parts[parts.length - 1];
+      const price = extractPrice(last);
+      const nameParts = price > 0 ? parts.slice(0, -1) : parts;
+      const name = nameParts[0];
+      if (!name) continue;
+      if (currentSection === "sizes") { result.sizes.push({ name, price }); continue; }
+      if (currentSection === "borders") { result.borders.push({ name, price }); continue; }
+      if (currentSection === "addons") { result.addons.push({ name, price }); continue; }
       result.products.push({ name, description: nameParts.slice(1).join(" - ") || null, price });
     }
   }
@@ -379,12 +446,13 @@ function ImportarCardapioTab({ companyId, catalog }: { companyId: string; catalo
     }
 
     const parsed = parseMenuText(text);
-    if (
-      parsed.products.length === 0 &&
-      parsed.flavors.length === 0 &&
-      parsed.addons.length === 0 &&
-      parsed.borders.length === 0
-    ) {
+    const hasContent =
+      parsed.sizes.length > 0 ||
+      parsed.products.length > 0 ||
+      parsed.flavors.length > 0 ||
+      parsed.addons.length > 0 ||
+      parsed.borders.length > 0;
+    if (!hasContent) {
       setError("Não foi possível identificar nenhum item no texto colado.");
       return;
     }
@@ -393,6 +461,37 @@ function ImportarCardapioTab({ companyId, catalog }: { companyId: string; catalo
     const supabase = createClient();
 
     try {
+      let pizzaProductId: string | null = null;
+
+      // Pizza-type product: created when sizes are detected
+      if (parsed.sizes.length > 0) {
+        const { data: prod, error: err } = await supabase
+          .from("products")
+          .insert({
+            company_id: companyId,
+            category_id: categoryId,
+            name: "Pizza",
+            description: null,
+            base_price: parsed.sizes[0]?.price ?? 0,
+            product_type: "pizza" as const,
+          })
+          .select("id")
+          .single();
+        if (err) throw err;
+        pizzaProductId = prod.id;
+
+        const { error: szErr } = await supabase.from("product_sizes").insert(
+          parsed.sizes.map((s) => ({
+            product_id: pizzaProductId!,
+            name: s.name,
+            price: s.price,
+            max_flavors: 1,
+          }))
+        );
+        if (szErr) throw szErr;
+      }
+
+      // Legacy plain-products (non-pizza categories)
       if (parsed.products.length > 0) {
         const { error: err } = await supabase.from("products").insert(
           parsed.products.map((p) => ({
@@ -407,15 +506,29 @@ function ImportarCardapioTab({ companyId, catalog }: { companyId: string; catalo
         if (err) throw err;
       }
 
+      // Flavors + link to pizza product if one was created
       if (parsed.flavors.length > 0) {
-        const { error: err } = await supabase.from("flavors").insert(
-          parsed.flavors.map((f) => ({
-            company_id: companyId,
-            name: f.name,
-            ingredients: f.ingredients.map((i) => ({ name: i, removable: true })),
-          }))
-        );
-        if (err) throw err;
+        const { data: insertedFlavors, error: flErr } = await supabase
+          .from("flavors")
+          .insert(
+            parsed.flavors.map((f) => ({
+              company_id: companyId,
+              name: f.name,
+              ingredients: f.ingredients.map((i) => ({ name: i, removable: true })),
+            }))
+          )
+          .select("id");
+        if (flErr) throw flErr;
+
+        if (pizzaProductId && insertedFlavors && insertedFlavors.length > 0) {
+          const { error: pfErr } = await supabase.from("product_flavors").insert(
+            insertedFlavors.map((f: { id: string }) => ({
+              product_id: pizzaProductId,
+              flavor_id: f.id,
+            }))
+          );
+          if (pfErr) throw pfErr;
+        }
       }
 
       if (parsed.addons.length > 0) {
@@ -433,7 +546,12 @@ function ImportarCardapioTab({ companyId, catalog }: { companyId: string; catalo
       }
 
       const total =
-        parsed.products.length + parsed.flavors.length + parsed.addons.length + parsed.borders.length;
+        (pizzaProductId ? 1 : 0) +
+        parsed.products.length +
+        parsed.sizes.length +
+        parsed.flavors.length +
+        parsed.addons.length +
+        parsed.borders.length;
       setSuccess(`Importado com sucesso: ${total} item(ns).`);
       setText("");
       refetch();
@@ -449,25 +567,9 @@ function ImportarCardapioTab({ companyId, catalog }: { companyId: string; catalo
       <div className="rounded-xl border border-border bg-card p-4 space-y-3">
         <p className="text-sm font-medium text-foreground">Importar cardápio por categoria</p>
         <p className="text-xs text-muted">
-          Selecione a categoria, cole o cardápio completo dela (produtos, sabores, adicionais e bordas) e o
-          sistema organiza tudo automaticamente. Use os cabeçalhos abaixo para separar cada parte (não é
-          obrigatório usar todos):
+          Cole o texto completo do cardápio. O sistema reconhece automaticamente seções como &quot;Tamanhos&quot;,
+          &quot;Sabores&quot;, &quot;Adicionais&quot; e &quot;Bordas&quot; — mesmo com emojis e símbolos.
         </p>
-        <pre className="rounded-lg bg-card-hover p-3 text-xs text-muted whitespace-pre-wrap">{`PRODUTOS
-Pizza Calabresa - Molho, calabresa, cebola - 45.00
-Pizza Marguerita - Molho, mussarela, manjericão - 42.00
-
-SABORES
-Calabresa - calabresa, cebola, azeitona
-Marguerita - mussarela, tomate, manjericão
-
-ADICIONAIS
-Borda recheada - 8.00
-Bacon extra - 5.00
-
-BORDAS
-Catupiry - 8.00
-Cheddar - 8.00`}</pre>
         <select
           value={categoryId}
           onChange={(e) => setCategoryId(e.target.value)}
