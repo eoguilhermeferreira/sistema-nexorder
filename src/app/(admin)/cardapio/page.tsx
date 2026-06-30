@@ -463,7 +463,7 @@ function ProdutosTab({ companyId }: { companyId: string }) {
     setEditName(item.name);
     if (selectedCat?.is_pizza) {
       const f = item as Flavor;
-      setEditDescription(f.ingredients.map((i) => i.name).join(", "));
+      setEditDescription((f.ingredients ?? []).map((i) => i.name).join(", "));
       setEditPrice("");
     } else {
       const p = item as Product;
@@ -526,7 +526,7 @@ function ProdutosTab({ companyId }: { companyId: string }) {
           {items.length === 0 && <p className="text-sm text-muted">Nenhum item cadastrado.</p>}
           {items.map((item) => {
             const desc = isPizza
-              ? (item as Flavor).ingredients.map((i) => i.name).join(", ")
+              ? ((item as Flavor).ingredients ?? []).map((i) => i.name).join(", ")
               : (item as Product).description ?? "";
             const itemPrice = isPizza ? null : (item as Product).base_price;
 

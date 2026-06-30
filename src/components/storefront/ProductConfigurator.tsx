@@ -60,7 +60,8 @@ function FlavorCard({
   removedIngredients: string[];
   onToggleIngredient: (name: string) => void;
 }) {
-  const removable = flavor.ingredients.filter((i) => i.removable);
+  const ingredients = flavor.ingredients ?? [];
+  const removable = ingredients.filter((i) => i.removable);
 
   return (
     <div className={`border-b border-border last:border-0 ${disabled && !selected ? "opacity-40" : ""}`}>
@@ -80,9 +81,9 @@ function FlavorCard({
           </button>
           <div>
             <p className="text-sm font-medium text-foreground">{flavor.name}</p>
-            {flavor.ingredients.length > 0 && (
+            {ingredients.length > 0 && (
               <p className="text-xs text-muted line-clamp-1">
-                {flavor.ingredients.map((i) => i.name).join(", ")}
+                {ingredients.map((i) => i.name).join(", ")}
               </p>
             )}
           </div>

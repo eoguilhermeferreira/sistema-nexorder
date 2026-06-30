@@ -255,7 +255,7 @@ function PizzaSection({
         </div>
         {flavors.map((flavor) => {
           const isSelected = selectedFlavorIds.includes(flavor.id);
-          const ingredients = flavor.ingredients.map((i) => i.name).join(", ");
+          const ingredients = (flavor.ingredients ?? []).map((i) => i.name).join(", ");
           const isDisabled = !isSelected && selectedFlavorIds.length >= maxFlavors;
 
           return (
