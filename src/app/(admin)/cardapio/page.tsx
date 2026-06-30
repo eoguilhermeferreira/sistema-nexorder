@@ -405,11 +405,13 @@ function ProdutosTab({ companyId }: { companyId: string }) {
   }
 
   useEffect(() => {
-    if (!selectedCatId || !selectedCat) return;
-    loadItems(selectedCatId, selectedCat.is_pizza);
+    if (!selectedCatId || categories.length === 0) return;
+    const cat = categories.find((c) => c.id === selectedCatId);
+    if (!cat) return;
+    loadItems(selectedCatId, cat.is_pizza);
     setEditId(null);
     setName(""); setDescription(""); setPrice("");
-  }, [selectedCatId]);
+  }, [selectedCatId, categories]);
 
   async function addItem() {
     if (!name.trim() || !selectedCat) return;
