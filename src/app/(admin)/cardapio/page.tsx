@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { formatCurrency } from "@/lib/format";
 import type { Category, Product } from "@/types/domain";
 
-type Tab = "categorias" | "produtos" | "sabores" | "adicionais" | "bordas";
+type Tab = "categorias" | "produtos" | "importar";
 
 export default function CardapioAdminPage() {
   const company = useCompany();
@@ -39,9 +39,7 @@ export default function CardapioAdminPage() {
         {([
           ["categorias", "Categorias"],
           ["produtos", "Produtos"],
-          ["sabores", "Sabores"],
-          ["adicionais", "Adicionais"],
-          ["bordas", "Bordas"],
+          ["importar", "Importar Cardápio"],
         ] as [Tab, string][]).map(([key, label]) => (
           <button
             key={key}
@@ -56,9 +54,7 @@ export default function CardapioAdminPage() {
       <div className="mt-6">
         {tab === "categorias" && <CategoriasTab companyId={company.id} catalog={catalog} />}
         {tab === "produtos" && <ProdutosTab companyId={company.id} catalog={catalog} />}
-        {tab === "sabores" && <SaboresTab companyId={company.id} catalog={catalog} />}
-        {tab === "adicionais" && <AdicionaisTab companyId={company.id} catalog={catalog} />}
-        {tab === "bordas" && <BordasTab companyId={company.id} catalog={catalog} />}
+        {tab === "importar" && <ImportarCardapioTab companyId={company.id} catalog={catalog} />}
       </div>
     </div>
   );
@@ -148,7 +144,6 @@ function ProdutosTab({ companyId, catalog }: { companyId: string; catalog: Catal
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
   const [productType, setProductType] = useState<"comum" | "pizza">("comum");
-  const [bulkText, setBulkText] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   async function addProduct() {
@@ -177,34 +172,6 @@ function ProdutosTab({ companyId, catalog }: { companyId: string; catalog: Catal
   async function toggleActive(product: Product) {
     const supabase = createClient();
     await supabase.from("products").update({ active: !product.active }).eq("id", product.id);
-    refetch();
-  }
-
-  async function runBulkImport() {
-    if (!categoryId || !bulkText.trim()) return;
-    const supabase = createClient();
-    const lines = bulkText.split("\n").map((l) => l.trim()).filter(Boolean);
-
-    const rows = lines.map((line) => {
-      const parts = line.split("-").map((p) => p.trim());
-      const last = parts[parts.length - 1];
-      const priceMatch = last.match(/[\d.,]+/);
-      const parsedPrice = priceMatch ? Number(priceMatch[0].replace(",", ".")) : 0;
-      const hasPrice = !!priceMatch;
-      const nameParts = hasPrice ? parts.slice(0, -1) : parts;
-
-      return {
-        company_id: companyId,
-        category_id: categoryId,
-        name: nameParts[0] ?? line,
-        description: nameParts.slice(1).join(" - ") || null,
-        base_price: parsedPrice,
-        product_type: "comum" as const,
-      };
-    });
-
-    await supabase.from("products").insert(rows);
-    setBulkText("");
     refetch();
   }
 
@@ -253,33 +220,6 @@ function ProdutosTab({ companyId, catalog }: { companyId: string; catalog: Catal
         </div>
         <button onClick={addProduct} className="w-full rounded-lg bg-wine px-4 py-2 text-sm font-medium text-white hover:bg-wine-hover">
           Adicionar Produto
-        </button>
-      </div>
-
-      <div className="max-w-xl space-y-3 rounded-xl border border-border bg-card p-4">
-        <p className="text-sm font-medium text-foreground">Cadastro inteligente</p>
-        <p className="text-xs text-muted">
-          Cole uma lista, uma por linha, no formato &quot;Nome - Descrição - Preço&quot;.
-        </p>
-        <select
-          value={categoryId}
-          onChange={(e) => setCategoryId(e.target.value)}
-          className="w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground"
-        >
-          <option value="">Selecione a categoria</option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
-        </select>
-        <textarea
-          value={bulkText}
-          onChange={(e) => setBulkText(e.target.value)}
-          rows={5}
-          placeholder={"Coca-Cola 2L - Refrigerante - 12.00\nSuco de Laranja - 8.50"}
-          className="w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground"
-        />
-        <button onClick={runBulkImport} className="w-full rounded-lg bg-card-hover px-4 py-2 text-sm font-medium text-foreground hover:bg-border">
-          Importar Lista
         </button>
       </div>
 
@@ -423,160 +363,208 @@ function PizzaConfig({
   );
 }
 
-function SaboresTab({ companyId, catalog }: { companyId: string; catalog: Catalog }) {
-  const { flavors, refetch } = catalog;
-  const [name, setName] = useState("");
-  const [ingredientsText, setIngredientsText] = useState("");
+type ParsedMenu = {
+  products: { name: string; description: string | null; price: number }[];
+  flavors: { name: string; ingredients: string[] }[];
+  addons: { name: string; price: number }[];
+  borders: { name: string; price: number }[];
+};
 
-  async function addFlavor() {
-    if (!name.trim()) return;
-    const supabase = createClient();
-    const ingredients = ingredientsText
-      .split(",")
-      .map((i) => i.trim())
-      .filter(Boolean)
-      .map((i) => ({ name: i, removable: true }));
+const SECTION_HEADERS: Record<string, keyof ParsedMenu> = {
+  PRODUTOS: "products",
+  PRODUTO: "products",
+  SABORES: "flavors",
+  SABOR: "flavors",
+  ADICIONAIS: "addons",
+  ADICIONAL: "addons",
+  BORDAS: "borders",
+  BORDA: "borders",
+};
 
-    await supabase.from("flavors").insert({ company_id: companyId, name: name.trim(), ingredients });
-    setName("");
-    setIngredientsText("");
-    refetch();
+function parseMenuText(text: string): ParsedMenu {
+  const result: ParsedMenu = { products: [], flavors: [], addons: [], borders: [] };
+  let currentSection: keyof ParsedMenu = "products";
+
+  const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+
+  for (const line of lines) {
+    const headerKey = line.replace(/:$/, "").trim().toUpperCase();
+    if (SECTION_HEADERS[headerKey]) {
+      currentSection = SECTION_HEADERS[headerKey];
+      continue;
+    }
+
+    const parts = line.split("-").map((p) => p.trim()).filter(Boolean);
+
+    if (currentSection === "flavors") {
+      const [name, ...rest] = parts;
+      if (!name) continue;
+      const ingredients = rest
+        .join(" - ")
+        .split(",")
+        .map((i) => i.trim())
+        .filter(Boolean);
+      result.flavors.push({ name, ingredients });
+      continue;
+    }
+
+    const last = parts[parts.length - 1];
+    const priceMatch = last?.match(/[\d.,]+/);
+    const price = priceMatch ? Number(priceMatch[0].replace(",", ".")) : 0;
+    const nameParts = priceMatch ? parts.slice(0, -1) : parts;
+    const name = nameParts[0] ?? line;
+    if (!name) continue;
+
+    if (currentSection === "addons" || currentSection === "borders") {
+      result[currentSection].push({ name, price });
+    } else {
+      result.products.push({ name, description: nameParts.slice(1).join(" - ") || null, price });
+    }
   }
 
-  async function toggleAvailable(id: string, available: boolean) {
-    const supabase = createClient();
-    await supabase.from("flavors").update({ available: !available }).eq("id", id);
-    refetch();
-  }
-
-  async function remove(id: string) {
-    const supabase = createClient();
-    await supabase.from("flavors").delete().eq("id", id);
-    refetch();
-  }
-
-  return (
-    <div className="max-w-xl space-y-3">
-      <div className="space-y-2 rounded-xl border border-border bg-card p-4">
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome do sabor" className="w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground" />
-        <input value={ingredientsText} onChange={(e) => setIngredientsText(e.target.value)} placeholder="Ingredientes, separados por vírgula" className="w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground" />
-        <button onClick={addFlavor} className="w-full rounded-lg bg-wine px-4 py-2 text-sm font-medium text-white hover:bg-wine-hover">Adicionar Sabor</button>
-      </div>
-
-      {flavors.map((flavor) => (
-        <div key={flavor.id} className="flex items-center justify-between rounded-xl border border-border bg-card p-3">
-          <div>
-            <p className={`text-sm ${flavor.available ? "text-foreground" : "text-muted line-through"}`}>{flavor.name}</p>
-            <p className="text-xs text-muted">{flavor.ingredients.map((i) => i.name).join(", ")}</p>
-          </div>
-          <div className="flex gap-1">
-            <button onClick={() => toggleAvailable(flavor.id, flavor.available)} className="rounded px-2 py-1 text-xs text-muted hover:bg-card-hover">
-              {flavor.available ? "Ocultar" : "Mostrar"}
-            </button>
-            <button onClick={() => remove(flavor.id)} className="rounded px-2 py-1 text-xs text-red-400 hover:bg-card-hover">Excluir</button>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
+  return result;
 }
 
-function AdicionaisTab({ companyId, catalog }: { companyId: string; catalog: Catalog }) {
-  const { addons, refetch } = catalog;
-  const [name, setName] = useState("");
-  const [price, setPrice] = useState("");
+function ImportarCardapioTab({ companyId, catalog }: { companyId: string; catalog: Catalog }) {
+  const { categories, refetch } = catalog;
+  const [categoryId, setCategoryId] = useState("");
+  const [text, setText] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
-  async function addAddon() {
-    if (!name.trim()) return;
-    const supabase = createClient();
-    await supabase.from("addons").insert({ company_id: companyId, name: name.trim(), price: Number(price) || 0 });
-    setName("");
-    setPrice("");
-    refetch();
-  }
+  async function runImport() {
+    setError(null);
+    setSuccess(null);
 
-  async function toggleActive(id: string, active: boolean) {
-    const supabase = createClient();
-    await supabase.from("addons").update({ active: !active }).eq("id", id);
-    refetch();
-  }
+    if (!categoryId) {
+      setError("Selecione a categoria antes de importar.");
+      return;
+    }
+    if (!text.trim()) {
+      setError("Cole o texto do cardápio antes de importar.");
+      return;
+    }
 
-  async function remove(id: string) {
+    const parsed = parseMenuText(text);
+    if (
+      parsed.products.length === 0 &&
+      parsed.flavors.length === 0 &&
+      parsed.addons.length === 0 &&
+      parsed.borders.length === 0
+    ) {
+      setError("Não foi possível identificar nenhum item no texto colado.");
+      return;
+    }
+
+    setLoading(true);
     const supabase = createClient();
-    await supabase.from("addons").delete().eq("id", id);
-    refetch();
+
+    try {
+      if (parsed.products.length > 0) {
+        const { error: err } = await supabase.from("products").insert(
+          parsed.products.map((p) => ({
+            company_id: companyId,
+            category_id: categoryId,
+            name: p.name,
+            description: p.description,
+            base_price: p.price,
+            product_type: "comum" as const,
+          }))
+        );
+        if (err) throw err;
+      }
+
+      if (parsed.flavors.length > 0) {
+        const { error: err } = await supabase.from("flavors").insert(
+          parsed.flavors.map((f) => ({
+            company_id: companyId,
+            name: f.name,
+            ingredients: f.ingredients.map((i) => ({ name: i, removable: true })),
+          }))
+        );
+        if (err) throw err;
+      }
+
+      if (parsed.addons.length > 0) {
+        const { error: err } = await supabase.from("addons").insert(
+          parsed.addons.map((a) => ({ company_id: companyId, name: a.name, price: a.price }))
+        );
+        if (err) throw err;
+      }
+
+      if (parsed.borders.length > 0) {
+        const { error: err } = await supabase.from("borders").insert(
+          parsed.borders.map((b) => ({ company_id: companyId, name: b.name, prices: { default: b.price } }))
+        );
+        if (err) throw err;
+      }
+
+      const total =
+        parsed.products.length + parsed.flavors.length + parsed.addons.length + parsed.borders.length;
+      setSuccess(`Importado com sucesso: ${total} item(ns).`);
+      setText("");
+      refetch();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erro ao importar o cardápio.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
-    <div className="max-w-xl space-y-3">
-      <div className="flex gap-2 rounded-xl border border-border bg-card p-4">
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome do adicional" className="flex-1 rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground" />
-        <input value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Preço" type="number" className="w-28 rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground" />
-        <button onClick={addAddon} className="rounded-lg bg-wine px-4 py-2 text-sm font-medium text-white hover:bg-wine-hover">+</button>
+    <div className="max-w-2xl space-y-3">
+      <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+        <p className="text-sm font-medium text-foreground">Importar cardápio por categoria</p>
+        <p className="text-xs text-muted">
+          Selecione a categoria, cole o cardápio completo dela (produtos, sabores, adicionais e bordas) e o
+          sistema organiza tudo automaticamente. Use os cabeçalhos abaixo para separar cada parte (não é
+          obrigatório usar todos):
+        </p>
+        <pre className="rounded-lg bg-card-hover p-3 text-xs text-muted whitespace-pre-wrap">{`PRODUTOS
+Pizza Calabresa - Molho, calabresa, cebola - 45.00
+Pizza Marguerita - Molho, mussarela, manjericão - 42.00
+
+SABORES
+Calabresa - calabresa, cebola, azeitona
+Marguerita - mussarela, tomate, manjericão
+
+ADICIONAIS
+Borda recheada - 8.00
+Bacon extra - 5.00
+
+BORDAS
+Catupiry - 8.00
+Cheddar - 8.00`}</pre>
+        <select
+          value={categoryId}
+          onChange={(e) => setCategoryId(e.target.value)}
+          className="w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground"
+        >
+          <option value="">Selecione a categoria</option>
+          {categories.map((c) => (
+            <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
+        </select>
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          rows={12}
+          placeholder={"Cole aqui o cardápio completo desta categoria..."}
+          className="w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground font-mono"
+        />
+
+        {error && <p className="text-sm text-red-400">{error}</p>}
+        {success && <p className="text-sm text-green-400">{success}</p>}
+
+        <button
+          onClick={runImport}
+          disabled={loading}
+          className="w-full rounded-lg bg-wine px-4 py-2 text-sm font-medium text-white hover:bg-wine-hover disabled:opacity-50"
+        >
+          {loading ? "Importando..." : "Importar Cardápio"}
+        </button>
       </div>
-
-      {addons.map((addon) => (
-        <div key={addon.id} className="flex items-center justify-between rounded-xl border border-border bg-card p-3">
-          <span className={`text-sm ${addon.active ? "text-foreground" : "text-muted line-through"}`}>{addon.name} • {formatCurrency(addon.price)}</span>
-          <div className="flex gap-1">
-            <button onClick={() => toggleActive(addon.id, addon.active)} className="rounded px-2 py-1 text-xs text-muted hover:bg-card-hover">
-              {addon.active ? "Ocultar" : "Mostrar"}
-            </button>
-            <button onClick={() => remove(addon.id)} className="rounded px-2 py-1 text-xs text-red-400 hover:bg-card-hover">Excluir</button>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function BordasTab({ companyId, catalog }: { companyId: string; catalog: Catalog }) {
-  const { borders, refetch } = catalog;
-  const [name, setName] = useState("");
-  const [price, setPrice] = useState("");
-
-  async function addBorder() {
-    if (!name.trim()) return;
-    const supabase = createClient();
-    await supabase.from("borders").insert({ company_id: companyId, name: name.trim(), prices: { default: Number(price) || 0 } });
-    setName("");
-    setPrice("");
-    refetch();
-  }
-
-  async function toggleActive(id: string, active: boolean) {
-    const supabase = createClient();
-    await supabase.from("borders").update({ active: !active }).eq("id", id);
-    refetch();
-  }
-
-  async function remove(id: string) {
-    const supabase = createClient();
-    await supabase.from("borders").delete().eq("id", id);
-    refetch();
-  }
-
-  return (
-    <div className="max-w-xl space-y-3">
-      <div className="flex gap-2 rounded-xl border border-border bg-card p-4">
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome da borda" className="flex-1 rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground" />
-        <input value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Preço" type="number" className="w-28 rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground" />
-        <button onClick={addBorder} className="rounded-lg bg-wine px-4 py-2 text-sm font-medium text-white hover:bg-wine-hover">+</button>
-      </div>
-
-      {borders.map((border) => (
-        <div key={border.id} className="flex items-center justify-between rounded-xl border border-border bg-card p-3">
-          <span className={`text-sm ${border.active ? "text-foreground" : "text-muted line-through"}`}>
-            {border.name} • {formatCurrency(Object.values(border.prices)[0] ?? 0)}
-          </span>
-          <div className="flex gap-1">
-            <button onClick={() => toggleActive(border.id, border.active)} className="rounded px-2 py-1 text-xs text-muted hover:bg-card-hover">
-              {border.active ? "Ocultar" : "Mostrar"}
-            </button>
-            <button onClick={() => remove(border.id)} className="rounded px-2 py-1 text-xs text-red-400 hover:bg-card-hover">Excluir</button>
-          </div>
-        </div>
-      ))}
     </div>
   );
 }
