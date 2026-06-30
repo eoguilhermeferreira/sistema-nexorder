@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { formatCurrency } from "@/lib/format";
 import type { Category, Product } from "@/types/domain";
 
-type Tab = "categorias" | "produtos" | "importar";
+type Tab = "categorias" | "importar";
 
 export default function CardapioAdminPage() {
   const company = useCompany();
@@ -38,7 +38,6 @@ export default function CardapioAdminPage() {
       <div className="mt-6 flex gap-1 rounded-lg bg-card-hover p-1 w-fit">
         {([
           ["categorias", "Categorias"],
-          ["produtos", "Produtos"],
           ["importar", "Importar Cardápio"],
         ] as [Tab, string][]).map(([key, label]) => (
           <button
@@ -53,7 +52,6 @@ export default function CardapioAdminPage() {
 
       <div className="mt-6">
         {tab === "categorias" && <CategoriasTab companyId={company.id} catalog={catalog} />}
-        {tab === "produtos" && <ProdutosTab companyId={company.id} catalog={catalog} />}
         {tab === "importar" && <ImportarCardapioTab companyId={company.id} catalog={catalog} />}
       </div>
     </div>
@@ -137,31 +135,9 @@ function CategoriasTab({ companyId, catalog }: { companyId: string; catalog: Cat
   );
 }
 
-function ProdutosTab({ companyId, catalog }: { companyId: string; catalog: Catalog }) {
+function ProdutosLista({ catalog }: { catalog: Catalog }) {
   const { categories, products, flavors, refetch } = catalog;
-  const [categoryId, setCategoryId] = useState("");
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [price, setPrice] = useState("");
-  const [productType, setProductType] = useState<"comum" | "pizza">("comum");
   const [expandedId, setExpandedId] = useState<string | null>(null);
-
-  async function addProduct() {
-    if (!name.trim() || !categoryId) return;
-    const supabase = createClient();
-    await supabase.from("products").insert({
-      company_id: companyId,
-      category_id: categoryId,
-      name: name.trim(),
-      description: description.trim() || null,
-      base_price: Number(price) || 0,
-      product_type: productType,
-    });
-    setName("");
-    setDescription("");
-    setPrice("");
-    refetch();
-  }
 
   async function removeProduct(id: string) {
     const supabase = createClient();
@@ -175,56 +151,12 @@ function ProdutosTab({ companyId, catalog }: { companyId: string; catalog: Catal
     refetch();
   }
 
-  return (
-    <div className="space-y-8">
-      <div className="max-w-xl space-y-3 rounded-xl border border-border bg-card p-4">
-        <p className="text-sm font-medium text-foreground">Novo produto</p>
-        <select
-          value={categoryId}
-          onChange={(e) => setCategoryId(e.target.value)}
-          className="w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground"
-        >
-          <option value="">Selecione a categoria</option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
-        </select>
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Nome do produto"
-          className="w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground"
-        />
-        <input
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="Descrição"
-          className="w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground"
-        />
-        <div className="flex gap-2">
-          <input
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-            placeholder="Preço base"
-            type="number"
-            className="flex-1 rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground"
-          />
-          <select
-            value={productType}
-            onChange={(e) => setProductType(e.target.value as "comum" | "pizza")}
-            className="rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground"
-          >
-            <option value="comum">Comum</option>
-            <option value="pizza">Pizza</option>
-          </select>
-        </div>
-        <button onClick={addProduct} className="w-full rounded-lg bg-wine px-4 py-2 text-sm font-medium text-white hover:bg-wine-hover">
-          Adicionar Produto
-        </button>
-      </div>
+  if (products.length === 0) return null;
 
-      <div className="space-y-2">
-        {categories.map((category) => {
+  return (
+    <div className="space-y-2">
+      <p className="text-sm font-medium text-foreground">Produtos cadastrados</p>
+      {categories.map((category) => {
           const categoryProducts = products.filter((p) => p.category_id === category.id);
           if (categoryProducts.length === 0) return null;
 
@@ -270,7 +202,6 @@ function ProdutosTab({ companyId, catalog }: { companyId: string; catalog: Catal
             </div>
           );
         })}
-      </div>
     </div>
   );
 }
@@ -565,6 +496,8 @@ Cheddar - 8.00`}</pre>
           {loading ? "Importando..." : "Importar Cardápio"}
         </button>
       </div>
+
+      <ProdutosLista catalog={catalog} />
     </div>
   );
 }
