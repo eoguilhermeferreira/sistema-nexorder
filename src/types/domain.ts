@@ -71,7 +71,18 @@ export interface Category {
   icon: string | null;
   display_order: number;
   active: boolean;
+  is_pizza: boolean;
   created_at: string | null;
+}
+
+export interface CategorySize {
+  id: string;
+  category_id: string;
+  name: string;
+  price: number;
+  slices: number | null;
+  max_flavors: number;
+  display_order: number;
 }
 
 export interface ProductSize {
@@ -87,6 +98,7 @@ export interface ProductSize {
 export interface Flavor {
   id: string;
   company_id: string;
+  category_id: string | null;
   name: string;
   image_url: string | null;
   ingredients: { name: string; removable: boolean }[];
@@ -96,6 +108,7 @@ export interface Flavor {
 export interface Addon {
   id: string;
   company_id: string;
+  category_id: string | null;
   name: string;
   price: number;
   group: string | null;

@@ -1,888 +1,591 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useCompany } from "@/contexts/CompanyContext";
-import { useCatalog } from "@/lib/hooks/useCatalog";
 import { createClient } from "@/lib/supabase/client";
 import { formatCurrency } from "@/lib/format";
-import type { Category, Product, Addon, ProductSize } from "@/types/domain";
+import type { Category, CategorySize, Addon } from "@/types/domain";
 
-type Tab = "categorias" | "tamanhos" | "adicionais" | "importar";
+type Tab = "categorias" | "adicionais" | "importar";
 
-export default function CardapioAdminPage() {
+export default function CardapioPage() {
   const company = useCompany();
-  const catalog = useCatalog(company.id);
   const [tab, setTab] = useState<Tab>("categorias");
-
-  const menuUrl =
-    typeof window !== "undefined"
-      ? `${window.location.origin}/cardapio/${company.slug}`
-      : `/cardapio/${company.slug}`;
-
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(menuUrl)}`;
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-foreground">Cardápio</h1>
-
-      <div className="mt-4 flex flex-wrap items-center gap-4 rounded-xl border border-border bg-card p-4">
-        <img src={qrUrl} alt="QR Code do cardápio" className="h-24 w-24 rounded-lg bg-white p-1" />
-        <div>
-          <p className="text-sm text-muted">Link do seu cardápio digital</p>
-          <a href={menuUrl} target="_blank" rel="noreferrer" className="text-sm font-medium text-foreground underline">
-            {menuUrl}
-          </a>
-        </div>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold text-foreground">Cardápio</h1>
+        <a
+          href={`/cardapio/${company.slug}`}
+          target="_blank"
+          className="rounded-lg bg-card-hover px-3 py-1.5 text-sm text-muted hover:text-foreground"
+        >
+          Ver cardápio →
+        </a>
       </div>
 
-      <div className="mt-6 flex gap-1 rounded-lg bg-card-hover p-1 w-fit flex-wrap">
-        {([
-          ["categorias", "Categorias"],
-          ["tamanhos", "Tamanhos"],
-          ["adicionais", "Adicionais"],
-          ["importar", "Importar Cardápio"],
-        ] as [Tab, string][]).map(([key, label]) => (
+      <div className="mt-6 flex gap-1 rounded-lg bg-card-hover p-1 w-fit">
+        {(["categorias", "adicionais", "importar"] as Tab[]).map((t) => (
           <button
-            key={key}
-            onClick={() => setTab(key)}
-            className={`rounded-md px-3 py-1.5 text-sm ${tab === key ? "bg-wine text-white" : "text-muted"}`}
+            key={t}
+            onClick={() => setTab(t)}
+            className={`rounded-md px-4 py-1.5 text-sm ${
+              tab === t ? "bg-card text-foreground shadow-sm" : "text-muted hover:text-foreground"
+            }`}
           >
-            {label}
+            {t === "categorias" ? "Categorias" : t === "adicionais" ? "Adicionais" : "Importar Cardápio"}
           </button>
         ))}
       </div>
 
       <div className="mt-6">
-        {tab === "categorias" && <CategoriasTab companyId={company.id} catalog={catalog} />}
-        {tab === "tamanhos" && <TamanhosTab companyId={company.id} catalog={catalog} />}
-        {tab === "adicionais" && <AdicionaisTab companyId={company.id} catalog={catalog} />}
-        {tab === "importar" && <ImportarCardapioTab companyId={company.id} catalog={catalog} />}
+        {tab === "categorias" && <CategoriasTab companyId={company.id} />}
+        {tab === "adicionais" && <AdicionaisTab companyId={company.id} />}
+        {tab === "importar" && <ImportarTab companyId={company.id} />}
       </div>
     </div>
   );
 }
 
-type Catalog = ReturnType<typeof useCatalog>;
+// ─── Categorias Tab ───────────────────────────────────────────────────────────
 
-function CategoriasTab({ companyId, catalog }: { companyId: string; catalog: Catalog }) {
-  const { categories, refetch } = catalog;
+function CategoriasTab({ companyId }: { companyId: string }) {
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
+  const [isPizza, setIsPizza] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editIsPizza, setEditIsPizza] = useState(false);
+
+  async function load() {
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("categories")
+      .select("*")
+      .eq("company_id", companyId)
+      .order("display_order");
+    setCategories((data as unknown as Category[]) ?? []);
+    setLoading(false);
+  }
+
+  useEffect(() => { load(); }, [companyId]);
 
   async function addCategory() {
     if (!name.trim()) return;
-    const supabase = createClient();
-    await supabase.from("categories").insert({
-      company_id: companyId,
-      name: name.trim(),
-      display_order: categories.length,
-    });
-    setName("");
-    refetch();
-  }
-
-  async function move(category: Category, direction: -1 | 1) {
-    const sorted = [...categories].sort((a, b) => a.display_order - b.display_order);
-    const index = sorted.findIndex((c) => c.id === category.id);
-    const swapWith = sorted[index + direction];
-    if (!swapWith) return;
-
-    const supabase = createClient();
-    await supabase.from("categories").update({ display_order: swapWith.display_order }).eq("id", category.id);
-    await supabase.from("categories").update({ display_order: category.display_order }).eq("id", swapWith.id);
-    refetch();
-  }
-
-  async function toggleActive(category: Category) {
-    const supabase = createClient();
-    await supabase.from("categories").update({ active: !category.active }).eq("id", category.id);
-    refetch();
-  }
-
-  async function remove(category: Category) {
-    const supabase = createClient();
-    await supabase.from("categories").delete().eq("id", category.id);
-    refetch();
-  }
-
-  return (
-    <div className="max-w-xl space-y-3">
-      <div className="flex gap-2">
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Nova categoria"
-          className="flex-1 rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground"
-        />
-        <button onClick={addCategory} className="rounded-lg bg-wine px-4 py-2 text-sm font-medium text-white hover:bg-wine-hover">
-          Adicionar
-        </button>
-      </div>
-
-      {[...categories]
-        .sort((a, b) => a.display_order - b.display_order)
-        .map((category) => (
-          <div key={category.id} className="flex items-center justify-between rounded-xl border border-border bg-card p-3">
-            <span className={`text-sm ${category.active ? "text-foreground" : "text-muted line-through"}`}>{category.name}</span>
-            <div className="flex items-center gap-1">
-              <button onClick={() => move(category, -1)} className="rounded px-2 py-1 text-muted hover:bg-card-hover">↑</button>
-              <button onClick={() => move(category, 1)} className="rounded px-2 py-1 text-muted hover:bg-card-hover">↓</button>
-              <button onClick={() => toggleActive(category)} className="rounded px-2 py-1 text-xs text-muted hover:bg-card-hover">
-                {category.active ? "Ocultar" : "Mostrar"}
-              </button>
-              <button onClick={() => remove(category)} className="rounded px-2 py-1 text-xs text-red-400 hover:bg-card-hover">
-                Excluir
-              </button>
-            </div>
-          </div>
-        ))}
-    </div>
-  );
-}
-
-function ProdutosLista({ catalog }: { catalog: Catalog }) {
-  const { categories, products, flavors, refetch } = catalog;
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-
-  async function removeProduct(id: string) {
-    const supabase = createClient();
-    await supabase.from("products").delete().eq("id", id);
-    refetch();
-  }
-
-  async function toggleActive(product: Product) {
-    const supabase = createClient();
-    await supabase.from("products").update({ active: !product.active }).eq("id", product.id);
-    refetch();
-  }
-
-  if (products.length === 0) return null;
-
-  return (
-    <div className="space-y-2">
-      <p className="text-sm font-medium text-foreground">Produtos cadastrados</p>
-      {categories.map((category) => {
-          const categoryProducts = products.filter((p) => p.category_id === category.id);
-          if (categoryProducts.length === 0) return null;
-
-          return (
-            <div key={category.id}>
-              <p className="mt-4 text-sm font-medium text-muted">{category.name}</p>
-              <div className="mt-2 space-y-2">
-                {categoryProducts.map((product) => (
-                  <div key={product.id} className="rounded-xl border border-border bg-card p-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className={`text-sm font-medium ${product.active ? "text-foreground" : "text-muted line-through"}`}>
-                          {product.name}
-                        </p>
-                        <p className="text-xs text-muted">
-                          {formatCurrency(product.base_price)} • {product.product_type === "pizza" ? "Pizza" : "Comum"}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        {product.product_type === "pizza" && (
-                          <button
-                            onClick={() => setExpandedId(expandedId === product.id ? null : product.id)}
-                            className="rounded px-2 py-1 text-xs text-muted hover:bg-card-hover"
-                          >
-                            {expandedId === product.id ? "Fechar" : "Configurar"}
-                          </button>
-                        )}
-                        <button onClick={() => toggleActive(product)} className="rounded px-2 py-1 text-xs text-muted hover:bg-card-hover">
-                          {product.active ? "Ocultar" : "Mostrar"}
-                        </button>
-                        <button onClick={() => removeProduct(product.id)} className="rounded px-2 py-1 text-xs text-red-400 hover:bg-card-hover">
-                          Excluir
-                        </button>
-                      </div>
-                    </div>
-
-                    {expandedId === product.id && (
-                      <PizzaConfig product={product} flavors={flavors} onChange={refetch} />
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          );
-        })}
-    </div>
-  );
-}
-
-function PizzaConfig({
-  product,
-  flavors,
-  onChange,
-}: {
-  product: Product;
-  flavors: { id: string; name: string }[];
-  onChange: () => void;
-}) {
-  const [sizeName, setSizeName] = useState("");
-  const [sizePrice, setSizePrice] = useState("");
-  const [maxFlavors, setMaxFlavors] = useState("1");
-
-  const linkedFlavorIds = new Set((product.product_flavors ?? []).map((pf) => pf.flavor_id));
-
-  async function addSize() {
-    if (!sizeName.trim()) return;
-    const supabase = createClient();
-    await supabase.from("product_sizes").insert({
-      product_id: product.id,
-      name: sizeName.trim(),
-      price: Number(sizePrice) || 0,
-      max_flavors: Number(maxFlavors) || 1,
-      display_order: (product.product_sizes ?? []).length,
-    });
-    setSizeName("");
-    setSizePrice("");
-    setMaxFlavors("1");
-    onChange();
-  }
-
-  async function removeSize(sizeId: string) {
-    const supabase = createClient();
-    await supabase.from("product_sizes").delete().eq("id", sizeId);
-    onChange();
-  }
-
-  async function toggleFlavor(flavorId: string) {
-    const supabase = createClient();
-    if (linkedFlavorIds.has(flavorId)) {
-      await supabase.from("product_flavors").delete().eq("product_id", product.id).eq("flavor_id", flavorId);
-    } else {
-      await supabase.from("product_flavors").insert({ product_id: product.id, flavor_id: flavorId });
-    }
-    onChange();
-  }
-
-  return (
-    <div className="mt-3 space-y-4 border-t border-border pt-3">
-      <div>
-        <p className="text-xs font-medium text-muted">Tamanhos</p>
-        <div className="mt-2 space-y-1">
-          {(product.product_sizes ?? []).map((size) => (
-            <div key={size.id} className="flex items-center justify-between rounded-lg bg-card-hover px-3 py-1.5 text-sm">
-              <span className="text-foreground">{size.name} • {formatCurrency(size.price)} • até {size.max_flavors} sabor(es)</span>
-              <button onClick={() => removeSize(size.id)} className="text-xs text-red-400">Excluir</button>
-            </div>
-          ))}
-        </div>
-        <div className="mt-2 flex gap-2">
-          <input value={sizeName} onChange={(e) => setSizeName(e.target.value)} placeholder="Nome" className="w-24 rounded-lg border border-border bg-card-hover px-2 py-1.5 text-sm text-foreground" />
-          <input value={sizePrice} onChange={(e) => setSizePrice(e.target.value)} placeholder="Preço" type="number" className="w-24 rounded-lg border border-border bg-card-hover px-2 py-1.5 text-sm text-foreground" />
-          <input value={maxFlavors} onChange={(e) => setMaxFlavors(e.target.value)} placeholder="Máx sabores" type="number" className="w-28 rounded-lg border border-border bg-card-hover px-2 py-1.5 text-sm text-foreground" />
-          <button onClick={addSize} className="rounded-lg bg-wine px-3 py-1.5 text-sm font-medium text-white hover:bg-wine-hover">+</button>
-        </div>
-      </div>
-
-      <div>
-        <p className="text-xs font-medium text-muted">Sabores disponíveis para este produto</p>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {flavors.map((flavor) => (
-            <button
-              key={flavor.id}
-              onClick={() => toggleFlavor(flavor.id)}
-              className={`rounded-full px-3 py-1 text-xs ${
-                linkedFlavorIds.has(flavor.id) ? "bg-wine text-white" : "bg-card-hover text-muted"
-              }`}
-            >
-              {flavor.name}
-            </button>
-          ))}
-          {flavors.length === 0 && <p className="text-xs text-muted">Cadastre sabores na aba &quot;Sabores&quot;.</p>}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── TamanhosTab ───────────────────────────────────────────────────────────────
-
-function TamanhosTab({ companyId, catalog }: { companyId: string; catalog: Catalog }) {
-  const { products, refetch } = catalog;
-  const pizzaProducts = products.filter((p) => p.product_type === "pizza");
-
-  const [selectedProductId, setSelectedProductId] = useState<string>(pizzaProducts[0]?.id ?? "");
-  const [sizeName, setSizeName] = useState("");
-  const [sizePrice, setSizePrice] = useState("");
-  const [sizeSlices, setSizeSlices] = useState("");
-  const [maxFlavors, setMaxFlavors] = useState("1");
-  const [saving, setSaving] = useState(false);
-
-  const selectedProduct = pizzaProducts.find((p) => p.id === selectedProductId);
-  const sizes = [...(selectedProduct?.product_sizes ?? [])].sort((a, b) => a.price - b.price);
-
-  async function addSize() {
-    if (!selectedProductId || !sizeName.trim()) return;
-    const price = Number(sizePrice.replace(",", "."));
-    if (!Number.isFinite(price) || price <= 0) return;
     setSaving(true);
     const supabase = createClient();
-    await supabase.from("product_sizes").insert({
-      product_id: selectedProductId,
-      name: sizeName.trim(),
-      price,
-      slices: sizeSlices ? Number(sizeSlices) : null,
-      max_flavors: Number(maxFlavors) || 1,
-      display_order: sizes.length,
+    const maxOrder = categories.length > 0 ? Math.max(...categories.map((c) => c.display_order)) + 1 : 0;
+    await (supabase.from("categories") as any).insert({
+      company_id: companyId,
+      name: name.trim(),
+      is_pizza: isPizza,
+      display_order: maxOrder,
+      active: true,
     });
-    setSizeName("");
-    setSizePrice("");
-    setSizeSlices("");
-    setMaxFlavors("1");
+    setName("");
+    setIsPizza(false);
     setSaving(false);
-    refetch();
+    load();
+  }
+
+  async function saveEdit(id: string) {
+    const supabase = createClient();
+    await (supabase.from("categories") as any).update({ name: editName.trim(), is_pizza: editIsPizza }).eq("id", id);
+    setEditId(null);
+    load();
+  }
+
+  async function deleteCategory(id: string) {
+    if (!confirm("Apagar categoria? Os produtos e sabores vinculados serão desvinculados.")) return;
+    const supabase = createClient();
+    await supabase.from("categories").delete().eq("id", id);
+    load();
+  }
+
+  if (loading) return <p className="text-sm text-muted">Carregando...</p>;
+
+  return (
+    <div className="max-w-xl space-y-6">
+      <div className="rounded-xl border border-border bg-card p-4">
+        <h2 className="text-sm font-medium text-foreground mb-3">Nova categoria</h2>
+        <div className="flex gap-2">
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Ex: Pizza, Esfirra, Bebidas"
+            className="flex-1 rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground"
+            onKeyDown={(e) => e.key === "Enter" && addCategory()}
+          />
+          <button
+            onClick={addCategory}
+            disabled={saving || !name.trim()}
+            className="rounded-lg bg-wine px-4 py-2 text-sm font-medium text-white hover:bg-wine-hover disabled:opacity-50"
+          >
+            Adicionar
+          </button>
+        </div>
+        <label className="mt-3 flex items-center gap-2 text-sm text-muted cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={isPizza}
+            onChange={(e) => setIsPizza(e.target.checked)}
+            className="rounded"
+          />
+          Tem tamanhos (pizza / bordas)
+        </label>
+      </div>
+
+      <div className="space-y-2">
+        {categories.length === 0 && <p className="text-sm text-muted">Nenhuma categoria cadastrada.</p>}
+        {categories.map((cat) => (
+          <div key={cat.id} className="rounded-xl border border-border bg-card p-4">
+            {editId === cat.id ? (
+              <div className="space-y-2">
+                <input
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground"
+                />
+                <label className="flex items-center gap-2 text-sm text-muted cursor-pointer select-none">
+                  <input type="checkbox" checked={editIsPizza} onChange={(e) => setEditIsPizza(e.target.checked)} className="rounded" />
+                  Tem tamanhos
+                </label>
+                <div className="flex gap-2">
+                  <button onClick={() => saveEdit(cat.id)} className="rounded-lg bg-wine px-3 py-1.5 text-xs font-medium text-white hover:bg-wine-hover">Salvar</button>
+                  <button onClick={() => setEditId(null)} className="rounded-lg bg-card-hover px-3 py-1.5 text-xs text-muted hover:text-foreground">Cancelar</button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-foreground">{cat.name}</p>
+                  {cat.is_pizza && <p className="text-xs text-muted">Com tamanhos</p>}
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => { setEditId(cat.id); setEditName(cat.name); setEditIsPizza(cat.is_pizza); }}
+                    className="text-xs text-muted hover:text-foreground"
+                  >
+                    Editar
+                  </button>
+                  <button onClick={() => deleteCategory(cat.id)} className="text-xs text-red-400 hover:text-red-300">Apagar</button>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Adicionais Tab ───────────────────────────────────────────────────────────
+
+function AdicionaisTab({ companyId }: { companyId: string }) {
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [selectedCatId, setSelectedCatId] = useState<string>("");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase
+      .from("categories")
+      .select("*")
+      .eq("company_id", companyId)
+      .order("display_order")
+      .then(({ data }) => {
+        const cats = (data as unknown as Category[]) ?? [];
+        setCategories(cats);
+        if (cats.length > 0) setSelectedCatId(cats[0].id);
+        setLoading(false);
+      });
+  }, [companyId]);
+
+  const selectedCat = categories.find((c) => c.id === selectedCatId) ?? null;
+
+  if (loading) return <p className="text-sm text-muted">Carregando...</p>;
+  if (categories.length === 0) return <p className="text-sm text-muted">Crie categorias primeiro.</p>;
+
+  return (
+    <div className="max-w-2xl space-y-6">
+      <div>
+        <label className="text-sm font-medium text-foreground">Categoria</label>
+        <select
+          value={selectedCatId}
+          onChange={(e) => setSelectedCatId(e.target.value)}
+          className="mt-1 w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground"
+        >
+          {categories.map((c) => (
+            <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
+        </select>
+      </div>
+
+      {selectedCat && (
+        <>
+          {selectedCat.is_pizza && <TamanhosSection categoryId={selectedCatId} />}
+          <AdicionaisSection companyId={companyId} categoryId={selectedCatId} />
+        </>
+      )}
+    </div>
+  );
+}
+
+function TamanhosSection({ categoryId }: { categoryId: string }) {
+  const [sizes, setSizes] = useState<CategorySize[]>([]);
+  const [name, setName] = useState("");
+  const [price, setPrice] = useState("");
+  const [maxFlavors, setMaxFlavors] = useState("2");
+  const [saving, setSaving] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editPrice, setEditPrice] = useState("");
+  const [editMaxFlavors, setEditMaxFlavors] = useState("2");
+
+  async function load() {
+    const supabase = createClient();
+    const { data } = await (supabase as any)
+      .from("category_sizes")
+      .select("*")
+      .eq("category_id", categoryId)
+      .order("display_order");
+    setSizes((data as CategorySize[]) ?? []);
+  }
+
+  useEffect(() => { load(); }, [categoryId]);
+
+  async function addSize() {
+    if (!name.trim() || !price) return;
+    setSaving(true);
+    const supabase = createClient();
+    const maxOrder = sizes.length > 0 ? Math.max(...sizes.map((s) => s.display_order)) + 1 : 0;
+    await (supabase as any).from("category_sizes").insert({
+      category_id: categoryId,
+      name: name.trim(),
+      price: Number(price),
+      max_flavors: Number(maxFlavors),
+      display_order: maxOrder,
+    });
+    setName("");
+    setPrice("");
+    setMaxFlavors("2");
+    setSaving(false);
+    load();
+  }
+
+  async function saveEdit(id: string) {
+    const supabase = createClient();
+    await (supabase as any).from("category_sizes").update({
+      name: editName.trim(),
+      price: Number(editPrice),
+      max_flavors: Number(editMaxFlavors),
+    }).eq("id", id);
+    setEditId(null);
+    load();
   }
 
   async function deleteSize(id: string) {
     const supabase = createClient();
-    await supabase.from("product_sizes").delete().eq("id", id);
-    refetch();
-  }
-
-  if (pizzaProducts.length === 0) {
-    return (
-      <div className="max-w-2xl">
-        <p className="text-sm text-muted">
-          Nenhum produto do tipo pizza encontrado. Importe o cardápio primeiro ou cadastre um produto pizza.
-        </p>
-      </div>
-    );
+    await (supabase as any).from("category_sizes").delete().eq("id", id);
+    load();
   }
 
   return (
-    <div className="max-w-2xl space-y-4">
-      {pizzaProducts.length > 1 && (
-        <div className="rounded-xl border border-border bg-card p-4">
-          <p className="text-sm font-medium text-foreground mb-2">Produto</p>
-          <select
-            value={selectedProductId}
-            onChange={(e) => setSelectedProductId(e.target.value)}
-            className="w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground"
-          >
-            {pizzaProducts.map((p) => (
-              <option key={p.id} value={p.id}>{p.name}</option>
-            ))}
-          </select>
-        </div>
-      )}
+    <div className="rounded-xl border border-border bg-card p-4 space-y-4">
+      <h3 className="text-sm font-semibold text-foreground">Tamanhos</h3>
 
-      <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-        <p className="text-sm font-medium text-foreground">Adicionar tamanho</p>
-        <div className="grid grid-cols-2 gap-2">
-          <input
-            value={sizeName}
-            onChange={(e) => setSizeName(e.target.value)}
-            placeholder="Nome (ex: Grande)"
-            className="col-span-2 rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground"
-          />
-          <input
-            value={sizePrice}
-            onChange={(e) => setSizePrice(e.target.value)}
-            placeholder="Preço (ex: 50,00)"
-            className="rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground"
-          />
-          <input
-            value={sizeSlices}
-            onChange={(e) => setSizeSlices(e.target.value)}
-            placeholder="Fatias (ex: 8)"
-            type="number"
-            className="rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground"
-          />
-          <div className="col-span-2">
-            <label className="text-xs text-muted">Máximo de sabores permitidos</label>
-            <select
-              value={maxFlavors}
-              onChange={(e) => setMaxFlavors(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground"
-            >
-              {[1, 2, 3, 4].map((n) => (
-                <option key={n} value={n}>{n} sabor{n > 1 ? "es" : ""}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-        <button
-          onClick={addSize}
-          disabled={saving || !sizeName.trim() || !sizePrice}
-          className="w-full rounded-lg bg-wine px-4 py-2 text-sm font-medium text-white hover:bg-wine-hover disabled:opacity-50"
-        >
-          {saving ? "Salvando..." : "Adicionar Tamanho"}
-        </button>
+      <div className="grid grid-cols-3 gap-2">
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Grande" className="rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground" />
+        <input value={price} onChange={(e) => setPrice(e.target.value)} type="number" min="0" step="0.01" placeholder="Preço (R$)" className="rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground" />
+        <input value={maxFlavors} onChange={(e) => setMaxFlavors(e.target.value)} type="number" min="1" placeholder="Máx sabores" className="rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground" />
       </div>
+      <button
+        onClick={addSize}
+        disabled={saving || !name.trim() || !price}
+        className="rounded-lg bg-wine px-4 py-2 text-sm font-medium text-white hover:bg-wine-hover disabled:opacity-50"
+      >
+        Adicionar tamanho
+      </button>
 
-      {sizes.length > 0 ? (
-        <div className="rounded-xl border border-border bg-card overflow-hidden">
-          <p className="border-b border-border bg-card-hover px-4 py-2 text-xs font-semibold text-muted uppercase tracking-wide">
-            Tamanhos cadastrados — {selectedProduct?.name}
-          </p>
-          {sizes.map((size) => (
-            <div key={size.id} className="flex items-center justify-between border-b border-border px-4 py-3 last:border-0">
-              <div>
-                <p className="text-sm font-medium text-foreground">{size.name}</p>
-                <p className="text-xs text-muted">
-                  {size.slices ? `${size.slices} fatias · ` : ""}
-                  até {size.max_flavors} sabor{size.max_flavors > 1 ? "es" : ""}
-                </p>
+      <div className="space-y-2">
+        {sizes.map((s) => (
+          <div key={s.id} className="rounded-lg border border-border bg-card-hover p-3">
+            {editId === s.id ? (
+              <div className="grid grid-cols-3 gap-2">
+                <input value={editName} onChange={(e) => setEditName(e.target.value)} className="rounded-lg border border-border bg-card px-2 py-1 text-sm text-foreground" />
+                <input value={editPrice} onChange={(e) => setEditPrice(e.target.value)} type="number" className="rounded-lg border border-border bg-card px-2 py-1 text-sm text-foreground" />
+                <input value={editMaxFlavors} onChange={(e) => setEditMaxFlavors(e.target.value)} type="number" className="rounded-lg border border-border bg-card px-2 py-1 text-sm text-foreground" />
+                <div className="col-span-3 flex gap-2">
+                  <button onClick={() => saveEdit(s.id)} className="rounded-lg bg-wine px-3 py-1 text-xs text-white hover:bg-wine-hover">Salvar</button>
+                  <button onClick={() => setEditId(null)} className="rounded-lg bg-card px-3 py-1 text-xs text-muted hover:text-foreground">Cancelar</button>
+                </div>
               </div>
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-semibold text-wine">{formatCurrency(size.price)}</span>
-                <button
-                  onClick={() => deleteSize(size.id)}
-                  className="rounded px-2 py-0.5 text-xs text-red-400 hover:bg-red-400/10"
-                >
-                  Remover
-                </button>
+            ) : (
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-sm font-medium text-foreground">{s.name}</span>
+                  <span className="ml-3 text-sm text-muted">{formatCurrency(s.price)}</span>
+                  <span className="ml-3 text-xs text-muted">até {s.max_flavors} sabor(es)</span>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => { setEditId(s.id); setEditName(s.name); setEditPrice(String(s.price)); setEditMaxFlavors(String(s.max_flavors)); }} className="text-xs text-muted hover:text-foreground">Editar</button>
+                  <button onClick={() => deleteSize(s.id)} className="text-xs text-red-400 hover:text-red-300">Apagar</button>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="text-sm text-muted">Nenhum tamanho cadastrado ainda para este produto.</p>
-      )}
+            )}
+          </div>
+        ))}
+        {sizes.length === 0 && <p className="text-sm text-muted">Nenhum tamanho cadastrado.</p>}
+      </div>
     </div>
   );
 }
 
-// ─── AdicionaisTab ─────────────────────────────────────────────────────────────
-
-const PREDEFINED_GROUPS = ["Borda Recheada", "Molhos", "Extras"];
-
-function AdicionaisTab({ companyId, catalog }: { companyId: string; catalog: Catalog }) {
-  const { addons, refetch } = catalog;
+function AdicionaisSection({ companyId, categoryId }: { companyId: string; categoryId: string }) {
+  const [addons, setAddons] = useState<Addon[]>([]);
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
-  const [group, setGroup] = useState("");
-  const [customGroup, setCustomGroup] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editPrice, setEditPrice] = useState("");
 
-  const effectiveGroup = group === "__custom" ? customGroup.trim() : group.trim();
+  async function load() {
+    const supabase = createClient();
+    const { data } = await (supabase as any)
+      .from("addons")
+      .select("*")
+      .eq("company_id", companyId)
+      .eq("category_id", categoryId)
+      .order("name");
+    setAddons((data as Addon[]) ?? []);
+  }
+
+  useEffect(() => { load(); }, [categoryId]);
 
   async function addAddon() {
     if (!name.trim()) return;
-    const parsedPrice = Number(price.replace(",", "."));
-    if (!Number.isFinite(parsedPrice) || parsedPrice < 0) return;
+    setSaving(true);
     const supabase = createClient();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await supabase.from("addons").insert({
+    await (supabase.from("addons") as any).insert({
       company_id: companyId,
+      category_id: categoryId,
       name: name.trim(),
-      price: parsedPrice,
-      group: effectiveGroup || null,
-    } as any);
+      price: price ? Number(price) : 0,
+      active: true,
+    });
     setName("");
     setPrice("");
-    refetch();
+    setSaving(false);
+    load();
   }
 
-  async function toggleActive(addon: Addon) {
+  async function saveEdit(id: string) {
     const supabase = createClient();
-    await supabase.from("addons").update({ active: !addon.active }).eq("id", addon.id);
-    refetch();
+    await supabase.from("addons").update({ name: editName.trim(), price: Number(editPrice) }).eq("id", id);
+    setEditId(null);
+    load();
   }
 
   async function deleteAddon(id: string) {
     const supabase = createClient();
     await supabase.from("addons").delete().eq("id", id);
-    refetch();
-  }
-
-  // group addons for display
-  const grouped = new Map<string, Addon[]>();
-  for (const a of addons) {
-    const key = a.group ?? "Sem grupo";
-    if (!grouped.has(key)) grouped.set(key, []);
-    grouped.get(key)!.push(a);
+    load();
   }
 
   return (
-    <div className="max-w-2xl space-y-4">
-      <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-        <p className="text-sm font-medium text-foreground">Novo adicional</p>
-        <p className="text-xs text-muted">
-          Tudo que pode personalizar um produto: extras, ingredientes adicionais, bordas recheadas, molhos, etc.
-          Use grupos para organizar (ex: &quot;Borda Recheada&quot; aparece como seção separada no pedido do cliente).
-        </p>
-        <div className="flex gap-2">
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Nome (ex: Bacon)"
-            className="flex-1 rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground"
-          />
-          <input
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-            placeholder="Preço (ex: 8,00)"
-            className="w-32 rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground"
-          />
-        </div>
-        <div className="flex gap-2">
-          <select
-            value={group}
-            onChange={(e) => setGroup(e.target.value)}
-            className="flex-1 rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground"
-          >
-            <option value="">Sem grupo (adicional geral)</option>
-            {PREDEFINED_GROUPS.map((g) => <option key={g} value={g}>{g}</option>)}
-            <option value="__custom">Outro grupo...</option>
-          </select>
-          {group === "__custom" && (
-            <input
-              value={customGroup}
-              onChange={(e) => setCustomGroup(e.target.value)}
-              placeholder="Nome do grupo"
-              className="flex-1 rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground"
-            />
-          )}
-        </div>
-        <button
-          onClick={addAddon}
-          disabled={!name.trim()}
-          className="w-full rounded-lg bg-wine px-4 py-2 text-sm font-medium text-white hover:bg-wine-hover disabled:opacity-50"
-        >
+    <div className="rounded-xl border border-border bg-card p-4 space-y-4">
+      <h3 className="text-sm font-semibold text-foreground">Adicionais</h3>
+
+      <div className="flex gap-2">
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Borda Catupiry, Bacon extra" className="flex-1 rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground" />
+        <input value={price} onChange={(e) => setPrice(e.target.value)} type="number" min="0" step="0.01" placeholder="Preço" className="w-28 rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground" />
+        <button onClick={addAddon} disabled={saving || !name.trim()} className="rounded-lg bg-wine px-4 py-2 text-sm font-medium text-white hover:bg-wine-hover disabled:opacity-50">
           Adicionar
         </button>
       </div>
 
-      {Array.from(grouped.entries()).map(([groupName, items]) => (
-        <div key={groupName} className="rounded-xl border border-border bg-card overflow-hidden">
-          <p className="border-b border-border bg-card-hover px-4 py-2 text-xs font-semibold text-muted uppercase tracking-wide">
-            {groupName}
-          </p>
-          {items.map((addon) => (
-            <div key={addon.id} className="flex items-center justify-between border-b border-border px-4 py-3 last:border-0">
-              <div>
-                <span className="text-sm text-foreground">{addon.name}</span>
-                <span className="ml-2 text-sm text-wine">+{formatCurrency(addon.price)}</span>
+      <div className="space-y-2">
+        {addons.map((a) => (
+          <div key={a.id} className="rounded-lg border border-border bg-card-hover p-3">
+            {editId === a.id ? (
+              <div className="flex gap-2">
+                <input value={editName} onChange={(e) => setEditName(e.target.value)} className="flex-1 rounded-lg border border-border bg-card px-2 py-1 text-sm text-foreground" />
+                <input value={editPrice} onChange={(e) => setEditPrice(e.target.value)} type="number" className="w-24 rounded-lg border border-border bg-card px-2 py-1 text-sm text-foreground" />
+                <button onClick={() => saveEdit(a.id)} className="rounded-lg bg-wine px-3 py-1 text-xs text-white hover:bg-wine-hover">Salvar</button>
+                <button onClick={() => setEditId(null)} className="rounded-lg bg-card px-3 py-1 text-xs text-muted hover:text-foreground">Cancelar</button>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => toggleActive(addon)}
-                  className={`rounded-full px-2 py-0.5 text-xs font-medium ${addon.active ? "bg-green-500/10 text-green-500" : "bg-muted/10 text-muted"}`}
-                >
-                  {addon.active ? "Ativo" : "Inativo"}
-                </button>
-                <button
-                  onClick={() => deleteAddon(addon.id)}
-                  className="rounded px-2 py-0.5 text-xs text-red-400 hover:bg-red-400/10"
-                >
-                  Remover
-                </button>
+            ) : (
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-sm text-foreground">{a.name}</span>
+                  {a.price > 0 && <span className="ml-3 text-sm text-muted">+{formatCurrency(a.price)}</span>}
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => { setEditId(a.id); setEditName(a.name); setEditPrice(String(a.price)); }} className="text-xs text-muted hover:text-foreground">Editar</button>
+                  <button onClick={() => deleteAddon(a.id)} className="text-xs text-red-400 hover:text-red-300">Apagar</button>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-      ))}
-
-      {addons.length === 0 && (
-        <p className="text-sm text-muted">Nenhum adicional cadastrado ainda.</p>
-      )}
+            )}
+          </div>
+        ))}
+        {addons.length === 0 && <p className="text-sm text-muted">Nenhum adicional cadastrado.</p>}
+      </div>
     </div>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── Importar Cardápio Tab ────────────────────────────────────────────────────
 
-type ParsedMenu = {
-  sizes: { name: string; price: number }[];
-  products: { name: string; description: string | null; price: number }[];
-  flavors: { name: string; ingredients: string[] }[];
-  addons: { name: string; price: number; group: string | null }[];
-};
-
-type SectionKey = "sizes" | "products" | "flavors" | "addons" | "borders" | "ignore";
-
-function stripLeadingSymbols(line: string): string {
-  // Remove leading emoji and non-letter/non-digit characters (keep letters, digits, and accented chars)
-  return line.replace(/^[^\p{L}\p{N}]+/u, "").trim();
-}
-
-function extractPrice(segment: string): number {
-  const m = segment.match(/R\$\s*([\d]+(?:[.,]\d+)?)/);
-  if (m) {
-    const v = Number(m[1].replace(",", "."));
-    return Number.isFinite(v) ? v : 0;
-  }
-  const m2 = segment.match(/([\d]+(?:[.,]\d+)?)/);
-  if (m2) {
-    const v = Number(m2[1].replace(",", "."));
-    return Number.isFinite(v) ? v : 0;
-  }
-  return 0;
-}
-
-function detectSection(line: string): SectionKey | null {
-  const lower = line.toLowerCase();
-  if (/tamanho|tamanhos/.test(lower)) return "sizes";
-  if (/borda|bordas/.test(lower)) return "borders";
-  if (/adicional|adicionais/.test(lower)) return "addons";
-  if (/sabor|sabores/.test(lower)) return "flavors";
-  if (/promo/.test(lower)) return "ignore";
-  if (/produto|produtos/.test(lower)) return "products";
-  return null;
-}
-
-function parseMenuText(text: string): ParsedMenu {
-  const result: ParsedMenu = { sizes: [], products: [], flavors: [], addons: [] };
-  let currentSection: SectionKey = "products";
-  let pendingFlavorName: string | null = null;
-
-  const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
-
-  for (const line of lines) {
-    const clean = stripLeadingSymbols(line);
-    if (!clean) continue;
-
-    // Section header detection (stripped line, no price-like content)
-    const sec = detectSection(clean);
-    if (sec && !clean.match(/R\$/) && !clean.match(/—|–/)) {
-      currentSection = sec;
-      pendingFlavorName = null;
-      continue;
-    }
-
-    if (currentSection === "ignore") continue;
-
-    if (currentSection === "flavors") {
-      // Check for "Ingredientes:" line
-      const ingMatch = clean.match(/^[Ii]ngredientes?:\s*(.+)/);
-      if (ingMatch && pendingFlavorName) {
-        const raw = ingMatch[1].replace(/\.$/, "");
-        // split on comma, then handle trailing " e " before last item
-        const parts = raw.split(",").map((s) => s.trim()).filter(Boolean);
-        const ingredients: string[] = [];
-        for (let i = 0; i < parts.length; i++) {
-          if (i === parts.length - 1 && parts[i].includes(" e ")) {
-            const sub = parts[i].split(" e ").map((s) => s.trim()).filter(Boolean);
-            ingredients.push(...sub);
-          } else {
-            ingredients.push(parts[i]);
-          }
-        }
-        result.flavors.push({ name: pendingFlavorName, ingredients });
-        pendingFlavorName = null;
-        continue;
-      }
-      // Numbered flavor line: "01 – Nome" or "01 - Nome"
-      const numMatch = clean.match(/^\d+\s*[–—\-]\s*(.+)/);
-      if (numMatch) {
-        pendingFlavorName = numMatch[1].trim();
-        continue;
-      }
-      // Plain flavor line (legacy): "Nome - ingrediente1, ingrediente2"
-      const dashIdx = clean.search(/[–—\-]/);
-      if (dashIdx > 0) {
-        const name = clean.slice(0, dashIdx).trim();
-        const rest = clean.slice(dashIdx + 1).trim();
-        const ingredients = rest.split(",").map((s) => s.trim()).filter(Boolean);
-        result.flavors.push({ name, ingredients });
-      }
-      continue;
-    }
-
-    // For sizes/borders/addons/products: split on em/en-dash or plain hyphen
-    const dashIdx = clean.search(/[–—]/);
-    if (dashIdx > 0) {
-      const namePart = clean.slice(0, dashIdx).trim();
-      const pricePart = clean.slice(dashIdx + 1).trim();
-      const price = extractPrice(pricePart);
-      if (!namePart) continue;
-      if (currentSection === "sizes") { result.sizes.push({ name: namePart, price }); continue; }
-      if (currentSection === "borders") { result.addons.push({ name: namePart, price, group: "Borda Recheada" }); continue; }
-      if (currentSection === "addons") { result.addons.push({ name: namePart, price, group: null }); continue; }
-      result.products.push({ name: namePart, description: null, price });
-      continue;
-    }
-
-    // Legacy plain-hyphen format: "Name - desc - price"
-    const parts = clean.split("-").map((p) => p.trim()).filter(Boolean);
-    if (parts.length >= 2) {
-      const last = parts[parts.length - 1];
-      const price = extractPrice(last);
-      const nameParts = price > 0 ? parts.slice(0, -1) : parts;
-      const name = nameParts[0];
-      if (!name) continue;
-      if (currentSection === "sizes") { result.sizes.push({ name, price }); continue; }
-      if (currentSection === "borders") { result.addons.push({ name, price, group: "Borda Recheada" }); continue; }
-      if (currentSection === "addons") { result.addons.push({ name, price, group: null }); continue; }
-      result.products.push({ name, description: nameParts.slice(1).join(" - ") || null, price });
-    }
-  }
-
-  return result;
-}
-
-function ImportarCardapioTab({ companyId, catalog }: { companyId: string; catalog: Catalog }) {
-  const { categories, refetch } = catalog;
-  const [categoryId, setCategoryId] = useState("");
+function ImportarTab({ companyId }: { companyId: string }) {
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [selectedCatId, setSelectedCatId] = useState<string>("");
   const [text, setText] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [result, setResult] = useState<{ imported: number; skipped: number } | null>(null);
+  const [error, setError] = useState("");
 
-  async function runImport() {
-    setError(null);
-    setSuccess(null);
-
-    if (!categoryId) {
-      setError("Selecione a categoria antes de importar.");
-      return;
-    }
-    if (!text.trim()) {
-      setError("Cole o texto do cardápio antes de importar.");
-      return;
-    }
-
-    const parsed = parseMenuText(text);
-    const hasContent =
-      parsed.sizes.length > 0 ||
-      parsed.products.length > 0 ||
-      parsed.flavors.length > 0 ||
-      parsed.addons.length > 0;
-    if (!hasContent) {
-      setError("Não foi possível identificar nenhum item no texto colado.");
-      return;
-    }
-
-    setLoading(true);
+  useEffect(() => {
     const supabase = createClient();
+    supabase
+      .from("categories")
+      .select("*")
+      .eq("company_id", companyId)
+      .order("display_order")
+      .then(({ data }) => {
+        const cats = (data as unknown as Category[]) ?? [];
+        setCategories(cats);
+        if (cats.length > 0) setSelectedCatId(cats[0].id);
+      });
+  }, [companyId]);
 
-    try {
-      let pizzaProductId: string | null = null;
+  function parseBlocks(raw: string): { name: string; ingredients: string[] }[] {
+    const blocks = raw.trim().split(/\n{2,}/);
+    const parsed: { name: string; ingredients: string[] }[] = [];
 
-      // Pizza-type product: created when sizes are detected
-      if (parsed.sizes.length > 0) {
-        const { data: prod, error: err } = await supabase
-          .from("products")
-          .insert({
-            company_id: companyId,
-            category_id: categoryId,
-            name: "Pizza",
-            description: null,
-            base_price: parsed.sizes[0]?.price ?? 0,
-            product_type: "pizza" as const,
-          })
-          .select("id")
-          .single();
-        if (err) throw err;
-        pizzaProductId = prod.id;
+    for (const block of blocks) {
+      const lines = block.trim().split("\n").map((l) => l.trim()).filter(Boolean);
+      if (lines.length === 0) continue;
 
-        const { error: szErr } = await supabase.from("product_sizes").insert(
-          parsed.sizes.map((s) => ({
-            product_id: pizzaProductId!,
-            name: s.name,
-            price: s.price,
-            max_flavors: 1,
-          }))
-        );
-        if (szErr) throw szErr;
+      const nameLine = lines[0];
+      // Strip leading numbering like "01 –", "1.", "01 -"
+      const name = nameLine.replace(/^\d+\s*[–\-\.]\s*/, "").trim();
+      if (!name) continue;
+
+      let ingredients: string[] = [];
+      const ingredLine = lines.find((l) => /ingredientes?:/i.test(l));
+      if (ingredLine) {
+        const rest = ingredLine.replace(/ingredientes?:\s*/i, "");
+        ingredients = rest.split(",").map((s) => s.trim()).filter(Boolean);
       }
 
-      // Legacy plain-products (non-pizza categories)
-      if (parsed.products.length > 0) {
-        const { error: err } = await supabase.from("products").insert(
-          parsed.products.map((p) => ({
-            company_id: companyId,
-            category_id: categoryId,
-            name: p.name,
-            description: p.description,
-            base_price: p.price,
-            product_type: "comum" as const,
-          }))
-        );
-        if (err) throw err;
-      }
-
-      // Flavors + link to pizza product if one was created
-      if (parsed.flavors.length > 0) {
-        const { data: insertedFlavors, error: flErr } = await supabase
-          .from("flavors")
-          .insert(
-            parsed.flavors.map((f) => ({
-              company_id: companyId,
-              name: f.name,
-              ingredients: f.ingredients.map((i) => ({ name: i, removable: true })),
-            }))
-          )
-          .select("id");
-        if (flErr) throw flErr;
-
-        if (pizzaProductId && insertedFlavors && insertedFlavors.length > 0) {
-          const { error: pfErr } = await supabase.from("product_flavors").insert(
-            insertedFlavors.map((f: { id: string }) => ({
-              product_id: pizzaProductId,
-              flavor_id: f.id,
-            }))
-          );
-          if (pfErr) throw pfErr;
-        }
-      }
-
-      if (parsed.addons.length > 0) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { error: err } = await supabase.from("addons").insert(
-          parsed.addons.map((a) => ({ company_id: companyId, name: a.name, price: a.price, group: a.group })) as any
-        );
-        if (err) throw err;
-      }
-
-      const total =
-        (pizzaProductId ? 1 : 0) +
-        parsed.products.length +
-        parsed.sizes.length +
-        parsed.flavors.length +
-        parsed.addons.length;
-      setSuccess(`Importado com sucesso: ${total} item(ns).`);
-      setText("");
-      refetch();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Erro ao importar o cardápio.");
-    } finally {
-      setLoading(false);
+      parsed.push({ name, ingredients });
     }
+
+    return parsed;
   }
+
+  async function importar() {
+    if (!selectedCatId || !text.trim()) return;
+    setImporting(true);
+    setError("");
+    setResult(null);
+
+    const selectedCat = categories.find((c) => c.id === selectedCatId)!;
+    const blocks = parseBlocks(text);
+    const supabase = createClient();
+    let imported = 0;
+    let skipped = 0;
+
+    for (const block of blocks) {
+      try {
+        if (selectedCat.is_pizza) {
+          const { error: err } = await (supabase.from("flavors") as any).insert({
+            company_id: companyId,
+            category_id: selectedCatId,
+            name: block.name,
+            ingredients: block.ingredients.map((i) => ({ name: i, removable: true })),
+            available: true,
+          });
+          if (err) { skipped++; } else { imported++; }
+        } else {
+          const { error: err } = await supabase.from("products").insert({
+            company_id: companyId,
+            category_id: selectedCatId,
+            product_type: "comum",
+            name: block.name,
+            description: block.ingredients.join(", ") || null,
+            base_price: 0,
+            active: true,
+          });
+          if (err) { skipped++; } else { imported++; }
+        }
+      } catch {
+        skipped++;
+      }
+    }
+
+    setImporting(false);
+    setResult({ imported, skipped });
+    if (imported > 0) setText("");
+  }
+
+  const selectedCat = categories.find((c) => c.id === selectedCatId);
 
   return (
-    <div className="max-w-2xl space-y-3">
-      <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-        <p className="text-sm font-medium text-foreground">Importar cardápio por categoria</p>
-        <p className="text-xs text-muted">
-          Cole o texto completo do cardápio. O sistema reconhece automaticamente seções como &quot;Tamanhos&quot;,
-          &quot;Sabores&quot;, &quot;Adicionais&quot; e &quot;Bordas&quot; — mesmo com emojis e símbolos.
-        </p>
+    <div className="max-w-2xl space-y-4">
+      <div>
+        <label className="text-sm font-medium text-foreground">Categoria de destino</label>
         <select
-          value={categoryId}
-          onChange={(e) => setCategoryId(e.target.value)}
-          className="w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground"
+          value={selectedCatId}
+          onChange={(e) => setSelectedCatId(e.target.value)}
+          className="mt-1 w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground"
         >
-          <option value="">Selecione a categoria</option>
           {categories.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
+            <option key={c.id} value={c.id}>{c.name}{c.is_pizza ? " (pizza)" : ""}</option>
           ))}
         </select>
+      </div>
+
+      {selectedCat && (
+        <p className="text-xs text-muted">
+          {selectedCat.is_pizza
+            ? "Cada bloco será importado como um sabor. Forneça nome e opcionalmente \"Ingredientes: molho, muçarela...\"."
+            : "Cada bloco será importado como um produto. Forneça nome e opcionalmente \"Ingredientes: ...\" (vira a descrição)."}
+        </p>
+      )}
+
+      <div>
+        <label className="text-sm font-medium text-foreground">Texto do cardápio</label>
+        <p className="mt-0.5 text-xs text-muted">Separe cada item por uma linha em branco. Nome na 1ª linha, depois "Ingredientes: ..." na 2ª.</p>
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
-          rows={12}
-          placeholder={"Cole aqui o cardápio completo desta categoria..."}
-          className="w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground font-mono"
+          rows={16}
+          placeholder={"Margherita\nIngredientes: molho, muçarela, manjericão\n\nCalabresa\nIngredientes: molho, muçarela, calabresa"}
+          className="mt-2 w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground font-mono"
         />
-
-        {error && <p className="text-sm text-red-400">{error}</p>}
-        {success && <p className="text-sm text-green-400">{success}</p>}
-
-        <button
-          onClick={runImport}
-          disabled={loading}
-          className="w-full rounded-lg bg-wine px-4 py-2 text-sm font-medium text-white hover:bg-wine-hover disabled:opacity-50"
-        >
-          {loading ? "Importando..." : "Importar Cardápio"}
-        </button>
       </div>
 
-      <ProdutosLista catalog={catalog} />
+      {error && <p className="text-sm text-red-400">{error}</p>}
+
+      {result && (
+        <div className="rounded-lg bg-card-hover px-4 py-3 text-sm">
+          <p className="text-foreground font-medium">Importação concluída</p>
+          <p className="text-muted">{result.imported} item(ns) importado(s){result.skipped > 0 ? `, ${result.skipped} ignorado(s)` : ""}.</p>
+        </div>
+      )}
+
+      <button
+        onClick={importar}
+        disabled={importing || !text.trim() || !selectedCatId}
+        className="rounded-lg bg-wine px-5 py-2.5 text-sm font-medium text-white hover:bg-wine-hover disabled:opacity-50"
+      >
+        {importing ? "Importando..." : "Importar cardápio"}
+      </button>
     </div>
   );
 }
