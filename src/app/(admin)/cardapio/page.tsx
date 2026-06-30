@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import { useCompany } from "@/contexts/CompanyContext";
 import { createClient } from "@/lib/supabase/client";
 import { formatCurrency } from "@/lib/format";
-import type { Category, CategorySize, Addon } from "@/types/domain";
+import type { Category, CategorySize, Addon, Flavor, Product } from "@/types/domain";
 
-type Tab = "categorias" | "adicionais" | "importar";
+type Tab = "categorias" | "adicionais" | "produtos";
 
 export default function CardapioPage() {
   const company = useCompany();
@@ -26,7 +26,7 @@ export default function CardapioPage() {
       </div>
 
       <div className="mt-6 flex gap-1 rounded-lg bg-card-hover p-1 w-fit">
-        {(["categorias", "adicionais", "importar"] as Tab[]).map((t) => (
+        {(["categorias", "adicionais", "produtos"] as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -34,7 +34,7 @@ export default function CardapioPage() {
               tab === t ? "bg-card text-foreground shadow-sm" : "text-muted hover:text-foreground"
             }`}
           >
-            {t === "categorias" ? "Categorias" : t === "adicionais" ? "Adicionais" : "Importar Cardápio"}
+            {t === "categorias" ? "Categorias" : t === "adicionais" ? "Adicionais" : "Produtos"}
           </button>
         ))}
       </div>
@@ -42,7 +42,7 @@ export default function CardapioPage() {
       <div className="mt-6">
         {tab === "categorias" && <CategoriasTab companyId={company.id} />}
         {tab === "adicionais" && <AdicionaisTab companyId={company.id} />}
-        {tab === "importar" && <ImportarTab companyId={company.id} />}
+        {tab === "produtos" && <ProdutosTab companyId={company.id} />}
       </div>
     </div>
   );
@@ -99,7 +99,7 @@ function CategoriasTab({ companyId }: { companyId: string }) {
   }
 
   async function deleteCategory(id: string) {
-    if (!confirm("Apagar categoria? Os produtos e sabores vinculados serão desvinculados.")) return;
+    if (!confirm("Apagar categoria?")) return;
     const supabase = createClient();
     await supabase.from("categories").delete().eq("id", id);
     load();
@@ -128,12 +128,7 @@ function CategoriasTab({ companyId }: { companyId: string }) {
           </button>
         </div>
         <label className="mt-3 flex items-center gap-2 text-sm text-muted cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={isPizza}
-            onChange={(e) => setIsPizza(e.target.checked)}
-            className="rounded"
-          />
+          <input type="checkbox" checked={isPizza} onChange={(e) => setIsPizza(e.target.checked)} className="rounded" />
           Tem tamanhos (pizza / bordas)
         </label>
       </div>
@@ -144,11 +139,7 @@ function CategoriasTab({ companyId }: { companyId: string }) {
           <div key={cat.id} className="rounded-xl border border-border bg-card p-4">
             {editId === cat.id ? (
               <div className="space-y-2">
-                <input
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  className="w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground"
-                />
+                <input value={editName} onChange={(e) => setEditName(e.target.value)} className="w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground" />
                 <label className="flex items-center gap-2 text-sm text-muted cursor-pointer select-none">
                   <input type="checkbox" checked={editIsPizza} onChange={(e) => setEditIsPizza(e.target.checked)} className="rounded" />
                   Tem tamanhos
@@ -165,12 +156,7 @@ function CategoriasTab({ companyId }: { companyId: string }) {
                   {cat.is_pizza && <p className="text-xs text-muted">Com tamanhos</p>}
                 </div>
                 <div className="flex gap-2">
-                  <button
-                    onClick={() => { setEditId(cat.id); setEditName(cat.name); setEditIsPizza(cat.is_pizza); }}
-                    className="text-xs text-muted hover:text-foreground"
-                  >
-                    Editar
-                  </button>
+                  <button onClick={() => { setEditId(cat.id); setEditName(cat.name); setEditIsPizza(cat.is_pizza); }} className="text-xs text-muted hover:text-foreground">Editar</button>
                   <button onClick={() => deleteCategory(cat.id)} className="text-xs text-red-400 hover:text-red-300">Apagar</button>
                 </div>
               </div>
@@ -191,17 +177,12 @@ function AdicionaisTab({ companyId }: { companyId: string }) {
 
   useEffect(() => {
     const supabase = createClient();
-    supabase
-      .from("categories")
-      .select("*")
-      .eq("company_id", companyId)
-      .order("display_order")
-      .then(({ data }) => {
-        const cats = (data as unknown as Category[]) ?? [];
-        setCategories(cats);
-        if (cats.length > 0) setSelectedCatId(cats[0].id);
-        setLoading(false);
-      });
+    supabase.from("categories").select("*").eq("company_id", companyId).order("display_order").then(({ data }) => {
+      const cats = (data as unknown as Category[]) ?? [];
+      setCategories(cats);
+      if (cats.length > 0) setSelectedCatId(cats[0].id);
+      setLoading(false);
+    });
   }, [companyId]);
 
   const selectedCat = categories.find((c) => c.id === selectedCatId) ?? null;
@@ -213,17 +194,10 @@ function AdicionaisTab({ companyId }: { companyId: string }) {
     <div className="max-w-2xl space-y-6">
       <div>
         <label className="text-sm font-medium text-foreground">Categoria</label>
-        <select
-          value={selectedCatId}
-          onChange={(e) => setSelectedCatId(e.target.value)}
-          className="mt-1 w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground"
-        >
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
+        <select value={selectedCatId} onChange={(e) => setSelectedCatId(e.target.value)} className="mt-1 w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground">
+          {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
       </div>
-
       {selectedCat && (
         <>
           {selectedCat.is_pizza && <TamanhosSection categoryId={selectedCatId} />}
@@ -247,11 +221,7 @@ function TamanhosSection({ categoryId }: { categoryId: string }) {
 
   async function load() {
     const supabase = createClient();
-    const { data } = await (supabase as any)
-      .from("category_sizes")
-      .select("*")
-      .eq("category_id", categoryId)
-      .order("display_order");
+    const { data } = await (supabase as any).from("category_sizes").select("*").eq("category_id", categoryId).order("display_order");
     setSizes((data as CategorySize[]) ?? []);
   }
 
@@ -262,54 +232,29 @@ function TamanhosSection({ categoryId }: { categoryId: string }) {
     setSaving(true);
     const supabase = createClient();
     const maxOrder = sizes.length > 0 ? Math.max(...sizes.map((s) => s.display_order)) + 1 : 0;
-    await (supabase as any).from("category_sizes").insert({
-      category_id: categoryId,
-      name: name.trim(),
-      price: Number(price),
-      max_flavors: Number(maxFlavors),
-      display_order: maxOrder,
-    });
-    setName("");
-    setPrice("");
-    setMaxFlavors("2");
-    setSaving(false);
-    load();
+    await (supabase as any).from("category_sizes").insert({ category_id: categoryId, name: name.trim(), price: Number(price), max_flavors: Number(maxFlavors), display_order: maxOrder });
+    setName(""); setPrice(""); setMaxFlavors("2"); setSaving(false); load();
   }
 
   async function saveEdit(id: string) {
-    const supabase = createClient();
-    await (supabase as any).from("category_sizes").update({
-      name: editName.trim(),
-      price: Number(editPrice),
-      max_flavors: Number(editMaxFlavors),
-    }).eq("id", id);
-    setEditId(null);
-    load();
+    await (createClient() as any).from("category_sizes").update({ name: editName.trim(), price: Number(editPrice), max_flavors: Number(editMaxFlavors) }).eq("id", id);
+    setEditId(null); load();
   }
 
   async function deleteSize(id: string) {
-    const supabase = createClient();
-    await (supabase as any).from("category_sizes").delete().eq("id", id);
+    await (createClient() as any).from("category_sizes").delete().eq("id", id);
     load();
   }
 
   return (
     <div className="rounded-xl border border-border bg-card p-4 space-y-4">
       <h3 className="text-sm font-semibold text-foreground">Tamanhos</h3>
-
       <div className="grid grid-cols-3 gap-2">
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Grande" className="rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground" />
         <input value={price} onChange={(e) => setPrice(e.target.value)} type="number" min="0" step="0.01" placeholder="Preço (R$)" className="rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground" />
         <input value={maxFlavors} onChange={(e) => setMaxFlavors(e.target.value)} type="number" min="1" placeholder="Máx sabores" className="rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground" />
       </div>
-      <button
-        onClick={addSize}
-        disabled={saving || !name.trim() || !price}
-        className="rounded-lg bg-wine px-4 py-2 text-sm font-medium text-white hover:bg-wine-hover disabled:opacity-50"
-      >
-        Adicionar tamanho
-      </button>
-
+      <button onClick={addSize} disabled={saving || !name.trim() || !price} className="rounded-lg bg-wine px-4 py-2 text-sm font-medium text-white hover:bg-wine-hover disabled:opacity-50">Adicionar tamanho</button>
       <div className="space-y-2">
         {sizes.map((s) => (
           <div key={s.id} className="rounded-lg border border-border bg-card-hover p-3">
@@ -319,8 +264,8 @@ function TamanhosSection({ categoryId }: { categoryId: string }) {
                 <input value={editPrice} onChange={(e) => setEditPrice(e.target.value)} type="number" className="rounded-lg border border-border bg-card px-2 py-1 text-sm text-foreground" />
                 <input value={editMaxFlavors} onChange={(e) => setEditMaxFlavors(e.target.value)} type="number" className="rounded-lg border border-border bg-card px-2 py-1 text-sm text-foreground" />
                 <div className="col-span-3 flex gap-2">
-                  <button onClick={() => saveEdit(s.id)} className="rounded-lg bg-wine px-3 py-1 text-xs text-white hover:bg-wine-hover">Salvar</button>
-                  <button onClick={() => setEditId(null)} className="rounded-lg bg-card px-3 py-1 text-xs text-muted hover:text-foreground">Cancelar</button>
+                  <button onClick={() => saveEdit(s.id)} className="rounded-lg bg-wine px-3 py-1 text-xs text-white">Salvar</button>
+                  <button onClick={() => setEditId(null)} className="rounded-lg bg-card px-3 py-1 text-xs text-muted">Cancelar</button>
                 </div>
               </div>
             ) : (
@@ -332,7 +277,7 @@ function TamanhosSection({ categoryId }: { categoryId: string }) {
                 </div>
                 <div className="flex gap-2">
                   <button onClick={() => { setEditId(s.id); setEditName(s.name); setEditPrice(String(s.price)); setEditMaxFlavors(String(s.max_flavors)); }} className="text-xs text-muted hover:text-foreground">Editar</button>
-                  <button onClick={() => deleteSize(s.id)} className="text-xs text-red-400 hover:text-red-300">Apagar</button>
+                  <button onClick={() => deleteSize(s.id)} className="text-xs text-red-400">Apagar</button>
                 </div>
               </div>
             )}
@@ -354,13 +299,7 @@ function AdicionaisSection({ companyId, categoryId }: { companyId: string; categ
   const [editPrice, setEditPrice] = useState("");
 
   async function load() {
-    const supabase = createClient();
-    const { data } = await (supabase as any)
-      .from("addons")
-      .select("*")
-      .eq("company_id", companyId)
-      .eq("category_id", categoryId)
-      .order("name");
+    const { data } = await (createClient() as any).from("addons").select("*").eq("company_id", companyId).eq("category_id", categoryId).order("name");
     setAddons((data as Addon[]) ?? []);
   }
 
@@ -369,45 +308,28 @@ function AdicionaisSection({ companyId, categoryId }: { companyId: string; categ
   async function addAddon() {
     if (!name.trim()) return;
     setSaving(true);
-    const supabase = createClient();
-    await (supabase.from("addons") as any).insert({
-      company_id: companyId,
-      category_id: categoryId,
-      name: name.trim(),
-      price: price ? Number(price) : 0,
-      active: true,
-    });
-    setName("");
-    setPrice("");
-    setSaving(false);
-    load();
+    await (createClient() as any).from("addons").insert({ company_id: companyId, category_id: categoryId, name: name.trim(), price: price ? Number(price) : 0, active: true });
+    setName(""); setPrice(""); setSaving(false); load();
   }
 
   async function saveEdit(id: string) {
-    const supabase = createClient();
-    await supabase.from("addons").update({ name: editName.trim(), price: Number(editPrice) }).eq("id", id);
-    setEditId(null);
-    load();
+    await createClient().from("addons").update({ name: editName.trim(), price: Number(editPrice) }).eq("id", id);
+    setEditId(null); load();
   }
 
   async function deleteAddon(id: string) {
-    const supabase = createClient();
-    await supabase.from("addons").delete().eq("id", id);
+    await createClient().from("addons").delete().eq("id", id);
     load();
   }
 
   return (
     <div className="rounded-xl border border-border bg-card p-4 space-y-4">
       <h3 className="text-sm font-semibold text-foreground">Adicionais</h3>
-
       <div className="flex gap-2">
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Borda Catupiry, Bacon extra" className="flex-1 rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground" />
         <input value={price} onChange={(e) => setPrice(e.target.value)} type="number" min="0" step="0.01" placeholder="Preço" className="w-28 rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground" />
-        <button onClick={addAddon} disabled={saving || !name.trim()} className="rounded-lg bg-wine px-4 py-2 text-sm font-medium text-white hover:bg-wine-hover disabled:opacity-50">
-          Adicionar
-        </button>
+        <button onClick={addAddon} disabled={saving || !name.trim()} className="rounded-lg bg-wine px-4 py-2 text-sm font-medium text-white hover:bg-wine-hover disabled:opacity-50">Adicionar</button>
       </div>
-
       <div className="space-y-2">
         {addons.map((a) => (
           <div key={a.id} className="rounded-lg border border-border bg-card-hover p-3">
@@ -415,8 +337,8 @@ function AdicionaisSection({ companyId, categoryId }: { companyId: string; categ
               <div className="flex gap-2">
                 <input value={editName} onChange={(e) => setEditName(e.target.value)} className="flex-1 rounded-lg border border-border bg-card px-2 py-1 text-sm text-foreground" />
                 <input value={editPrice} onChange={(e) => setEditPrice(e.target.value)} type="number" className="w-24 rounded-lg border border-border bg-card px-2 py-1 text-sm text-foreground" />
-                <button onClick={() => saveEdit(a.id)} className="rounded-lg bg-wine px-3 py-1 text-xs text-white hover:bg-wine-hover">Salvar</button>
-                <button onClick={() => setEditId(null)} className="rounded-lg bg-card px-3 py-1 text-xs text-muted hover:text-foreground">Cancelar</button>
+                <button onClick={() => saveEdit(a.id)} className="rounded-lg bg-wine px-3 py-1 text-xs text-white">Salvar</button>
+                <button onClick={() => setEditId(null)} className="rounded-lg bg-card px-3 py-1 text-xs text-muted">Cancelar</button>
               </div>
             ) : (
               <div className="flex items-center justify-between">
@@ -426,7 +348,7 @@ function AdicionaisSection({ companyId, categoryId }: { companyId: string; categ
                 </div>
                 <div className="flex gap-2">
                   <button onClick={() => { setEditId(a.id); setEditName(a.name); setEditPrice(String(a.price)); }} className="text-xs text-muted hover:text-foreground">Editar</button>
-                  <button onClick={() => deleteAddon(a.id)} className="text-xs text-red-400 hover:text-red-300">Apagar</button>
+                  <button onClick={() => deleteAddon(a.id)} className="text-xs text-red-400">Apagar</button>
                 </div>
               </div>
             )}
@@ -438,154 +360,206 @@ function AdicionaisSection({ companyId, categoryId }: { companyId: string; categ
   );
 }
 
-// ─── Importar Cardápio Tab ────────────────────────────────────────────────────
+// ─── Produtos Tab ─────────────────────────────────────────────────────────────
 
-function ImportarTab({ companyId }: { companyId: string }) {
+function ProdutosTab({ companyId }: { companyId: string }) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCatId, setSelectedCatId] = useState<string>("");
-  const [text, setText] = useState("");
-  const [importing, setImporting] = useState(false);
-  const [result, setResult] = useState<{ imported: number; skipped: number } | null>(null);
-  const [error, setError] = useState("");
+  const [items, setItems] = useState<(Product | Flavor)[]>([]);
+  const [loadingCats, setLoadingCats] = useState(true);
+  const [loadingItems, setLoadingItems] = useState(false);
+
+  // form
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [price, setPrice] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  // edit
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editPrice, setEditPrice] = useState("");
 
   useEffect(() => {
-    const supabase = createClient();
-    supabase
-      .from("categories")
-      .select("*")
-      .eq("company_id", companyId)
-      .order("display_order")
-      .then(({ data }) => {
-        const cats = (data as unknown as Category[]) ?? [];
-        setCategories(cats);
-        if (cats.length > 0) setSelectedCatId(cats[0].id);
-      });
+    createClient().from("categories").select("*").eq("company_id", companyId).order("display_order").then(({ data }) => {
+      const cats = (data as unknown as Category[]) ?? [];
+      setCategories(cats);
+      if (cats.length > 0) setSelectedCatId(cats[0].id);
+      setLoadingCats(false);
+    });
   }, [companyId]);
-
-  function parseBlocks(raw: string): { name: string; ingredients: string[] }[] {
-    const blocks = raw.trim().split(/\n{2,}/);
-    const parsed: { name: string; ingredients: string[] }[] = [];
-
-    for (const block of blocks) {
-      const lines = block.trim().split("\n").map((l) => l.trim()).filter(Boolean);
-      if (lines.length === 0) continue;
-
-      const nameLine = lines[0];
-      // Strip leading numbering like "01 –", "1.", "01 -"
-      const name = nameLine.replace(/^\d+\s*[–\-\.]\s*/, "").trim();
-      if (!name) continue;
-
-      let ingredients: string[] = [];
-      const ingredLine = lines.find((l) => /ingredientes?:/i.test(l));
-      if (ingredLine) {
-        const rest = ingredLine.replace(/ingredientes?:\s*/i, "");
-        ingredients = rest.split(",").map((s) => s.trim()).filter(Boolean);
-      }
-
-      parsed.push({ name, ingredients });
-    }
-
-    return parsed;
-  }
-
-  async function importar() {
-    if (!selectedCatId || !text.trim()) return;
-    setImporting(true);
-    setError("");
-    setResult(null);
-
-    const selectedCat = categories.find((c) => c.id === selectedCatId)!;
-    const blocks = parseBlocks(text);
-    const supabase = createClient();
-    let imported = 0;
-    let skipped = 0;
-
-    for (const block of blocks) {
-      try {
-        if (selectedCat.is_pizza) {
-          const { error: err } = await (supabase.from("flavors") as any).insert({
-            company_id: companyId,
-            category_id: selectedCatId,
-            name: block.name,
-            ingredients: block.ingredients.map((i) => ({ name: i, removable: true })),
-            available: true,
-          });
-          if (err) { skipped++; } else { imported++; }
-        } else {
-          const { error: err } = await supabase.from("products").insert({
-            company_id: companyId,
-            category_id: selectedCatId,
-            product_type: "comum",
-            name: block.name,
-            description: block.ingredients.join(", ") || null,
-            base_price: 0,
-            active: true,
-          });
-          if (err) { skipped++; } else { imported++; }
-        }
-      } catch {
-        skipped++;
-      }
-    }
-
-    setImporting(false);
-    setResult({ imported, skipped });
-    if (imported > 0) setText("");
-  }
 
   const selectedCat = categories.find((c) => c.id === selectedCatId);
 
+  async function loadItems(catId: string, isPizza: boolean) {
+    setLoadingItems(true);
+    if (isPizza) {
+      const { data } = await (createClient() as any).from("flavors").select("*").eq("company_id", companyId).eq("category_id", catId).order("name");
+      setItems((data as Flavor[]) ?? []);
+    } else {
+      const { data } = await createClient().from("products").select("*").eq("company_id", companyId).eq("category_id", catId).order("name");
+      setItems((data as unknown as Product[]) ?? []);
+    }
+    setLoadingItems(false);
+  }
+
+  useEffect(() => {
+    if (!selectedCatId || !selectedCat) return;
+    loadItems(selectedCatId, selectedCat.is_pizza);
+    setEditId(null);
+    setName(""); setDescription(""); setPrice("");
+  }, [selectedCatId]);
+
+  async function addItem() {
+    if (!name.trim() || !selectedCat) return;
+    setSaving(true);
+    if (selectedCat.is_pizza) {
+      const ingredients = description.trim()
+        ? description.split(",").map((s) => ({ name: s.trim(), removable: true })).filter((i) => i.name)
+        : [];
+      await (createClient() as any).from("flavors").insert({ company_id: companyId, category_id: selectedCatId, name: name.trim(), ingredients, available: true });
+    } else {
+      await createClient().from("products").insert({
+        company_id: companyId, category_id: selectedCatId, product_type: "comum",
+        name: name.trim(), description: description.trim() || null,
+        base_price: price ? Number(price) : 0, active: true,
+      });
+    }
+    setName(""); setDescription(""); setPrice("");
+    setSaving(false);
+    loadItems(selectedCatId, selectedCat.is_pizza);
+  }
+
+  async function saveEdit() {
+    if (!editId || !selectedCat) return;
+    if (selectedCat.is_pizza) {
+      const ingredients = editDescription.trim()
+        ? editDescription.split(",").map((s) => ({ name: s.trim(), removable: true })).filter((i) => i.name)
+        : [];
+      await (createClient() as any).from("flavors").update({ name: editName.trim(), ingredients }).eq("id", editId);
+    } else {
+      await createClient().from("products").update({ name: editName.trim(), description: editDescription.trim() || null, base_price: Number(editPrice) }).eq("id", editId);
+    }
+    setEditId(null);
+    loadItems(selectedCatId, selectedCat.is_pizza);
+  }
+
+  async function deleteItem(id: string) {
+    if (!selectedCat) return;
+    if (!confirm("Apagar este item?")) return;
+    if (selectedCat.is_pizza) {
+      await (createClient() as any).from("flavors").delete().eq("id", id);
+    } else {
+      await createClient().from("products").delete().eq("id", id);
+    }
+    loadItems(selectedCatId, selectedCat.is_pizza);
+  }
+
+  function startEdit(item: Product | Flavor) {
+    setEditId(item.id);
+    setEditName(item.name);
+    if (selectedCat?.is_pizza) {
+      const f = item as Flavor;
+      setEditDescription(f.ingredients.map((i) => i.name).join(", "));
+      setEditPrice("");
+    } else {
+      const p = item as Product;
+      setEditDescription(p.description ?? "");
+      setEditPrice(String(p.base_price));
+    }
+  }
+
+  if (loadingCats) return <p className="text-sm text-muted">Carregando...</p>;
+  if (categories.length === 0) return <p className="text-sm text-muted">Crie categorias primeiro.</p>;
+
+  const isPizza = selectedCat?.is_pizza ?? false;
+
   return (
-    <div className="max-w-2xl space-y-4">
+    <div className="max-w-2xl space-y-6">
       <div>
-        <label className="text-sm font-medium text-foreground">Categoria de destino</label>
-        <select
-          value={selectedCatId}
-          onChange={(e) => setSelectedCatId(e.target.value)}
-          className="mt-1 w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground"
-        >
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}{c.is_pizza ? " (pizza)" : ""}</option>
-          ))}
+        <label className="text-sm font-medium text-foreground">Categoria</label>
+        <select value={selectedCatId} onChange={(e) => setSelectedCatId(e.target.value)} className="mt-1 w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground">
+          {categories.map((c) => <option key={c.id} value={c.id}>{c.name}{c.is_pizza ? " (pizza)" : ""}</option>)}
         </select>
       </div>
 
-      {selectedCat && (
-        <p className="text-xs text-muted">
-          {selectedCat.is_pizza
-            ? "Cada bloco será importado como um sabor. Forneça nome e opcionalmente \"Ingredientes: molho, muçarela...\"."
-            : "Cada bloco será importado como um produto. Forneça nome e opcionalmente \"Ingredientes: ...\" (vira a descrição)."}
-        </p>
-      )}
-
-      <div>
-        <label className="text-sm font-medium text-foreground">Texto do cardápio</label>
-        <p className="mt-0.5 text-xs text-muted">Separe cada item por uma linha em branco. Nome na 1ª linha, depois "Ingredientes: ..." na 2ª.</p>
-        <textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          rows={16}
-          placeholder={"Margherita\nIngredientes: molho, muçarela, manjericão\n\nCalabresa\nIngredientes: molho, muçarela, calabresa"}
-          className="mt-2 w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground font-mono"
+      {/* add form */}
+      <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+        <h3 className="text-sm font-semibold text-foreground">
+          {isPizza ? "Novo sabor" : "Novo produto"}
+        </h3>
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder={isPizza ? "Nome do sabor (ex: Alho e Óleo)" : "Nome do produto (ex: Esfirra de Carne)"}
+          className="w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground"
         />
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          rows={2}
+          placeholder={isPizza ? "Ingredientes separados por vírgula (ex: muçarela, alho, tomate, parmesão)" : "Ingredientes / descrição (ex: carne moída, cebola, tomate)"}
+          className="w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground"
+        />
+        {!isPizza && (
+          <input
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+            type="number" min="0" step="0.01"
+            placeholder="Preço (R$)"
+            className="w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground"
+          />
+        )}
+        <button onClick={addItem} disabled={saving || !name.trim()} className="rounded-lg bg-wine px-4 py-2 text-sm font-medium text-white hover:bg-wine-hover disabled:opacity-50">
+          Adicionar
+        </button>
       </div>
 
-      {error && <p className="text-sm text-red-400">{error}</p>}
+      {/* list */}
+      {loadingItems ? (
+        <p className="text-sm text-muted">Carregando...</p>
+      ) : (
+        <div className="space-y-2">
+          {items.length === 0 && <p className="text-sm text-muted">Nenhum item cadastrado.</p>}
+          {items.map((item) => {
+            const desc = isPizza
+              ? (item as Flavor).ingredients.map((i) => i.name).join(", ")
+              : (item as Product).description ?? "";
+            const itemPrice = isPizza ? null : (item as Product).base_price;
 
-      {result && (
-        <div className="rounded-lg bg-card-hover px-4 py-3 text-sm">
-          <p className="text-foreground font-medium">Importação concluída</p>
-          <p className="text-muted">{result.imported} item(ns) importado(s){result.skipped > 0 ? `, ${result.skipped} ignorado(s)` : ""}.</p>
+            return (
+              <div key={item.id} className="rounded-xl border border-border bg-card p-4">
+                {editId === item.id ? (
+                  <div className="space-y-2">
+                    <input value={editName} onChange={(e) => setEditName(e.target.value)} className="w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground" />
+                    <textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)} rows={2} className="w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground" />
+                    {!isPizza && (
+                      <input value={editPrice} onChange={(e) => setEditPrice(e.target.value)} type="number" className="w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground" />
+                    )}
+                    <div className="flex gap-2">
+                      <button onClick={saveEdit} className="rounded-lg bg-wine px-3 py-1.5 text-xs font-medium text-white">Salvar</button>
+                      <button onClick={() => setEditId(null)} className="rounded-lg bg-card-hover px-3 py-1.5 text-xs text-muted">Cancelar</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground">{item.name}</p>
+                      {desc && <p className="mt-0.5 text-xs text-muted">{desc}</p>}
+                      {itemPrice != null && <p className="mt-1 text-sm font-semibold text-wine">{formatCurrency(itemPrice)}</p>}
+                    </div>
+                    <div className="flex shrink-0 gap-2">
+                      <button onClick={() => startEdit(item)} className="text-xs text-muted hover:text-foreground">Editar</button>
+                      <button onClick={() => deleteItem(item.id)} className="text-xs text-red-400">Apagar</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
-
-      <button
-        onClick={importar}
-        disabled={importing || !text.trim() || !selectedCatId}
-        className="rounded-lg bg-wine px-5 py-2.5 text-sm font-medium text-white hover:bg-wine-hover disabled:opacity-50"
-      >
-        {importing ? "Importando..." : "Importar cardápio"}
-      </button>
     </div>
   );
 }
