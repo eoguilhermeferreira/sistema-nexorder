@@ -341,7 +341,8 @@ function parseMenuText(text: string): ParsedMenu {
 
     const last = parts[parts.length - 1];
     const priceMatch = last?.match(/[\d.,]+/);
-    const price = priceMatch ? Number(priceMatch[0].replace(",", ".")) : 0;
+    const parsedPrice = priceMatch ? Number(priceMatch[0].replace(",", ".")) : 0;
+    const price = Number.isFinite(parsedPrice) ? parsedPrice : 0;
     const nameParts = priceMatch ? parts.slice(0, -1) : parts;
     const name = nameParts[0] ?? line;
     if (!name) continue;
