@@ -12,7 +12,7 @@ export function printOrder(order: Order) {
   const itemsHtml = (order.order_items ?? [])
     .map((item) => {
       const sizePart = item.size_name ? ` (${item.size_name})` : "";
-      const pricePart = `<span style="font-size:12px;color:#555;">${formatCurrency(item.price * item.quantity)}</span>`;
+      const pricePart = `<span style="font-size:12px;color:#111;font-weight:600;">${formatCurrency(item.price * item.quantity)}</span>`;
 
       // flavors with their specific addons grouped below each flavor
       let flavorsPart = "";
@@ -22,7 +22,7 @@ export function printOrder(order: Order) {
             const flavorAddons = (item.additions ?? []).filter((a) => a.flavor_name === f.name);
             const addonText =
               flavorAddons.length > 0
-                ? ` <span style="color:#7c1f3d;">(${flavorAddons
+                ? ` <span style="color:#111;font-weight:600;">(${flavorAddons
                     .map((a) => (a.qty > 1 ? `${a.name} x${a.qty}` : a.name))
                     .join(", ")})</span>`
                 : "";
@@ -35,7 +35,7 @@ export function printOrder(order: Order) {
       const hasPerFlavorAddons = (item.additions ?? []).some((a) => a.flavor_name);
       const genericAddonsPart =
         !hasPerFlavorAddons && item.additions && item.additions.length > 0
-          ? `<div style="margin-left:12px;color:#7c1f3d;">+ ${item.additions
+          ? `<div style="margin-left:12px;color:#111;font-weight:600;">+ ${item.additions
               .map((a) => (a.qty > 1 ? `${a.name} x${a.qty}` : a.name))
               .join(", ")}</div>`
           : "";
