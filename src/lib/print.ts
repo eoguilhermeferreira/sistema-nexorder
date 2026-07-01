@@ -20,13 +20,13 @@ export function printOrder(order: Order) {
         flavorsPart = item.flavors
           .map((f) => {
             const flavorAddons = (item.additions ?? []).filter((a) => a.flavor_name === f.name);
-            const addonLine =
+            const addonText =
               flavorAddons.length > 0
-                ? `<div style="margin-left:20px;color:#7c1f3d;">+ ${flavorAddons
+                ? ` <span style="color:#7c1f3d;">(${flavorAddons
                     .map((a) => (a.qty > 1 ? `${a.name} x${a.qty}` : a.name))
-                    .join(", ")}</div>`
+                    .join(", ")})</span>`
                 : "";
-            return `<div style="margin-left:12px;color:#444;">• ${f.name}</div>${addonLine}`;
+            return `<div style="margin-left:12px;color:#444;">• ${f.name}${addonText}</div>`;
           })
           .join("");
       }

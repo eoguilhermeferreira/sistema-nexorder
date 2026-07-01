@@ -273,12 +273,14 @@ function CheckoutModal({
                         const flavorAddons = (item.additions ?? []).filter((a) => a.flavor_name === f.name);
                         return (
                           <div key={f.flavor_id}>
-                            <p className="text-xs text-muted">• {f.name}</p>
-                            {flavorAddons.length > 0 && (
-                              <p className="ml-2 text-xs text-muted">
-                                + {flavorAddons.map((a) => (a.qty > 1 ? `${a.name} x${a.qty}` : a.name)).join(", ")}
-                              </p>
-                            )}
+                            <p className="text-xs text-muted">
+                              • {f.name}
+                              {flavorAddons.length > 0 && (
+                                <span className="ml-1">
+                                  ({flavorAddons.map((a) => (a.qty > 1 ? `${a.name} x${a.qty}` : a.name)).join(", ")})
+                                </span>
+                              )}
+                            </p>
                           </div>
                         );
                       })}

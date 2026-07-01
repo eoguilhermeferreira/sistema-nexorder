@@ -67,12 +67,14 @@ export function OrderCard({ order, children }: OrderCardProps) {
                       const flavorAddons = addonsPerFlavor.get(f.name) ?? [];
                       return (
                         <div key={f.flavor_id}>
-                          <p className="text-xs text-muted">• {f.name}</p>
-                          {flavorAddons.length > 0 && (
-                            <p className="ml-3 text-xs text-wine">
-                              + {flavorAddons.map((a) => (a.qty > 1 ? `${a.name} x${a.qty}` : a.name)).join(", ")}
-                            </p>
-                          )}
+                          <p className="text-xs text-muted">
+                            • {f.name}
+                            {flavorAddons.length > 0 && (
+                              <span className="ml-1 text-wine">
+                                ({flavorAddons.map((a) => (a.qty > 1 ? `${a.name} x${a.qty}` : a.name)).join(", ")})
+                              </span>
+                            )}
+                          </p>
                         </div>
                       );
                     })}
