@@ -182,24 +182,27 @@ function CheckoutModal({
       return;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await supabase.from("order_items").insert(
+    const { error: itemsError } = await (supabase as any).from("order_items").insert(
       items.map((item) => ({
         order_id: order.id,
         product_name: item.product_name,
         quantity: item.quantity,
-        size_id: item.size_id,
         size_name: item.size_name,
-        flavors: item.flavors as unknown as import("@/types/database").Json,
-        border_id: item.border_id,
+        flavors: item.flavors ?? [],
         border_name: item.border_name,
         border_price: item.border_price,
-        additions: item.additions as unknown as import("@/types/database").Json,
-        removed_ingredients: item.removed_ingredients,
+        additions: item.additions ?? [],
+        removed_ingredients: item.removed_ingredients ?? [],
         notes: item.notes,
         price: item.price,
-      })) as any
+      }))
     );
+
+    if (itemsError) {
+      setError("Erro ao salvar itens do pedido. Tente novamente.");
+      setSubmitting(false);
+      return;
+    }
 
     if (type === "entrega") {
       await supabase.from("addresses").insert({
