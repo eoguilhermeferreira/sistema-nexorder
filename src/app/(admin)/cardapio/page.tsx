@@ -508,28 +508,29 @@ function ProdutosTab({ companyId }: { companyId: string }) {
     setBulkSaving(true);
     setBulkResult("");
 
-    // Supports two formats:
-    // 1. Block format (name on one line, ingredients on next, blank line between):
-    //    Calabresa
-    //    Calabresa, cebola, tomate e azeitona.
-    //
-    // 2. Pipe format (everything on one line):
-    //    Calabresa | calabresa, cebola, tomate e azeitona
-    const rawBlocks = bulkText.split(/\n\s*\n/).map((b) => b.trim()).filter(Boolean);
+    // Normalize line endings (Windows \r\n → \n) then split into blocks by blank lines
+    const normalized = bulkText.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+    const rawBlocks = normalized.split(/\n{2,}/).map((b) => b.trim()).filter(Boolean);
+
     const rows = rawBlocks.map((block) => {
-      if (block.includes("|")) {
-        const [namePart, ingPart] = block.split("|").map((s) => s.trim());
-        const ingredients = ingPart
-          ? ingPart.replace(/\.$/, "").split(",").map((s) => ({ name: s.trim(), removable: true })).filter((i) => i.name)
-          : [];
-        return { company_id: companyId, category_id: selectedCatId, name: namePart, ingredients, available: true };
-      }
       const blockLines = block.split("\n").map((l) => l.trim()).filter(Boolean);
+      // First line is always the name
       const namePart = blockLines[0];
-      const ingLine = blockLines.slice(1).join(" ").replace(/\.$/, "");
-      const ingredients = ingLine
-        ? ingLine.split(",").map((s) => ({ name: s.trim().replace(/ e$/, "").trim(), removable: true })).filter((i) => i.name)
-        : [];
+      // Second line (if exists) is the ingredients string
+      const ingLine = blockLines[1] ? blockLines[1].replace(/\.$/, "") : "";
+      // Split by comma, handle last item joined by " e " (Portuguese: "tomate e azeitona")
+      const rawParts = ingLine ? ingLine.split(",").map((s) => s.trim()).filter(Boolean) : [];
+      const ingredients: { name: string; removable: boolean }[] = [];
+      rawParts.forEach((part, i) => {
+        if (i === rawParts.length - 1 && part.includes(" e ")) {
+          // last part may be "tomate e azeitona" → split into two
+          part.split(" e ").map((s) => s.trim()).filter(Boolean).forEach((s) => {
+            ingredients.push({ name: s, removable: true });
+          });
+        } else {
+          ingredients.push({ name: part, removable: true });
+        }
+      });
       return { company_id: companyId, category_id: selectedCatId, name: namePart, ingredients, available: true };
     });
 
