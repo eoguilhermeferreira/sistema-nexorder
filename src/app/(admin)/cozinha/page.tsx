@@ -28,9 +28,11 @@ export default function CozinhaPage() {
   const emPreparo = orders.filter((o) => o.status === "em_preparo");
   const prontos = orders.filter((o) => o.status === "pronto");
 
-  const activeOrders = [...aguardando, ...emPreparo].sort(
-    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-  );
+  const activeOrders = [
+    // newest first within each group, aguardando on top
+    ...aguardando.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
+    ...emPreparo.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
+  ];
 
   async function acceptOrder(orderId: string) {
     const supabase = createClient();
