@@ -129,7 +129,7 @@ function CategoriasTab({ companyId }: { companyId: string }) {
         </div>
         <label className="mt-3 flex items-center gap-2 text-sm text-muted cursor-pointer select-none">
           <input type="checkbox" checked={isPizza} onChange={(e) => setIsPizza(e.target.checked)} className="rounded" />
-          Tem tamanhos (pizza / bordas)
+          Tem tamanhos
         </label>
       </div>
 
@@ -482,7 +482,7 @@ function ProdutosTab({ companyId }: { companyId: string }) {
       <div>
         <label className="text-sm font-medium text-foreground">Categoria</label>
         <select value={selectedCatId} onChange={(e) => setSelectedCatId(e.target.value)} className="mt-1 w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground">
-          {categories.map((c) => <option key={c.id} value={c.id}>{c.name}{c.is_pizza ? " (pizza)" : ""}</option>)}
+          {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
       </div>
 
