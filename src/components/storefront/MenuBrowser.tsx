@@ -136,7 +136,10 @@ function PizzaSection({
   const [sizes, setSizes] = useState<CategorySize[]>([]);
   const [selectedSizeId, setSelectedSizeId] = useState<string>("");
   const [selectedFlavorIds, setSelectedFlavorIds] = useState<string[]>([]);
-  const [addonQtys, setAddonQtys] = useState<Record<string, number>>({});
+  // addonQtys: per-flavor addon quantities { [flavorId]: { [addonId]: qty } }
+  const [addonQtys, setAddonQtys] = useState<Record<string, Record<string, number>>>({});
+  // which flavors have their addons panel open
+  const [expandedFlavorIds, setExpandedFlavorIds] = useState<Set<string>>(new Set());
   const [notes, setNotes] = useState("");
   const [sizeHighlight, setSizeHighlight] = useState(false);
   const [quantity, setQuantity] = useState(1);
@@ -157,6 +160,8 @@ function PizzaSection({
   function selectSize(id: string) {
     setSelectedSizeId(id);
     setSelectedFlavorIds([]);
+    setAddonQtys({});
+    setExpandedFlavorIds(new Set());
     setSizeHighlight(false);
   }
 
@@ -168,34 +173,69 @@ function PizzaSection({
       return;
     }
     setSelectedFlavorIds((prev) => {
-      if (prev.includes(flavorId)) return prev.filter((id) => id !== flavorId);
+      if (prev.includes(flavorId)) {
+        // deselect: remove addons and collapse
+        setAddonQtys((q) => { const n = { ...q }; delete n[flavorId]; return n; });
+        setExpandedFlavorIds((e) => { const n = new Set(e); n.delete(flavorId); return n; });
+        return prev.filter((id) => id !== flavorId);
+      }
       if (prev.length >= maxFlavors) return maxFlavors === 1 ? [flavorId] : prev;
+      // select: auto-expand addons panel if there are addons
+      if (addons.length > 0) {
+        setExpandedFlavorIds((e) => new Set([...e, flavorId]));
+      }
       return [...prev, flavorId];
     });
   }
 
-  function incAddon(id: string) {
-    setAddonQtys((prev) => ({ ...prev, [id]: (prev[id] ?? 0) + 1 }));
+  function toggleExpand(flavorId: string) {
+    setExpandedFlavorIds((prev) => {
+      const n = new Set(prev);
+      if (n.has(flavorId)) n.delete(flavorId);
+      else n.add(flavorId);
+      return n;
+    });
   }
 
-  function decAddon(id: string) {
+  function incAddon(flavorId: string, addonId: string) {
+    setAddonQtys((prev) => ({
+      ...prev,
+      [flavorId]: { ...(prev[flavorId] ?? {}), [addonId]: ((prev[flavorId] ?? {})[addonId] ?? 0) + 1 },
+    }));
+  }
+
+  function decAddon(flavorId: string, addonId: string) {
     setAddonQtys((prev) => {
-      const next = (prev[id] ?? 0) - 1;
-      if (next <= 0) { const n = { ...prev }; delete n[id]; return n; }
-      return { ...prev, [id]: next };
+      const flavorQtys = { ...(prev[flavorId] ?? {}) };
+      const next = (flavorQtys[addonId] ?? 0) - 1;
+      if (next <= 0) delete flavorQtys[addonId];
+      else flavorQtys[addonId] = next;
+      return { ...prev, [flavorId]: flavorQtys };
     });
+  }
+
+  // flatten all per-flavor addons into a single list (summing quantities)
+  function flattenAddons() {
+    const totals: Record<string, number> = {};
+    for (const flavorQtys of Object.values(addonQtys)) {
+      for (const [addonId, qty] of Object.entries(flavorQtys)) {
+        totals[addonId] = (totals[addonId] ?? 0) + qty;
+      }
+    }
+    return totals;
   }
 
   function addToCart() {
     if (!selectedSize || selectedFlavorIds.length === 0) return;
     const selected = flavors.filter((f) => selectedFlavorIds.includes(f.id));
+    const flat = flattenAddons();
 
-    const addonsTotal = Object.entries(addonQtys).reduce((sum, [id, qty]) => {
+    const addonsTotal = Object.entries(flat).reduce((sum, [id, qty]) => {
       const a = addons.find((x) => x.id === id);
       return sum + (a?.price ?? 0) * qty;
     }, 0);
 
-    const addonsArr = Object.entries(addonQtys)
+    const addonsArr = Object.entries(flat)
       .filter(([, qty]) => qty > 0)
       .map(([id, qty]) => {
         const a = addons.find((x) => x.id === id)!;
@@ -221,6 +261,7 @@ function PizzaSection({
     setSelectedSizeId("");
     setSelectedFlavorIds([]);
     setAddonQtys({});
+    setExpandedFlavorIds(new Set());
     setNotes("");
     setQuantity(1);
     setAdded(true);
@@ -228,6 +269,13 @@ function PizzaSection({
   }
 
   const canAdd = !!selectedSize && selectedFlavorIds.length > 0;
+
+  // total addons price across all flavors
+  const flat = flattenAddons();
+  const addonsTotal = Object.entries(flat).reduce((sum, [id, qty]) => {
+    const a = addons.find((x) => x.id === id);
+    return sum + (a?.price ?? 0) * qty;
+  }, 0);
 
   return (
     <div className="mt-3 space-y-3">
@@ -252,10 +300,10 @@ function PizzaSection({
               <button
                 key={size.id}
                 onClick={() => selectSize(size.id)}
-                className={`flex flex-col items-start rounded-xl border px-4 py-2 text-left transition-colors ${
+                className={`flex flex-col items-start rounded-xl border px-4 py-2 text-left transition-colors active:scale-95 ${
                   selectedSizeId === size.id
                     ? "border-wine bg-wine text-white"
-                    : "border-border bg-card-hover text-foreground hover:border-wine"
+                    : "border-border bg-card-hover text-foreground"
                 }`}
               >
                 <span className="text-sm font-semibold">{size.name}</span>
@@ -268,7 +316,7 @@ function PizzaSection({
         )}
       </div>
 
-      {/* flavor list */}
+      {/* flavor list with inline collapsible addons */}
       <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
         <div className="px-4 py-2">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted">
@@ -284,57 +332,99 @@ function PizzaSection({
           const isSelected = selectedFlavorIds.includes(flavor.id);
           const ingredients = (flavor.ingredients ?? []).map((i) => i.name).join(", ");
           const isDisabled = !isSelected && selectedFlavorIds.length >= maxFlavors;
+          const isExpanded = expandedFlavorIds.has(flavor.id);
+          const flavorAddonQtys = addonQtys[flavor.id] ?? {};
+          const flavorAddonsTotal = Object.entries(flavorAddonQtys).reduce((sum, [id, qty]) => {
+            const a = addons.find((x) => x.id === id);
+            return sum + (a?.price ?? 0) * qty;
+          }, 0);
+          const hasAddons = addons.length > 0;
 
           return (
-            <button
-              key={flavor.id}
-              onClick={() => toggleFlavor(flavor.id)}
-              className={`flex w-full items-center gap-3 px-4 py-4 text-left transition-colors ${
-                isDisabled ? "opacity-40" : "active:bg-card-hover"
-              } ${isSelected ? "bg-wine/5" : ""}`}
-            >
-              <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
-                isSelected ? "border-wine bg-wine" : "border-border"
-              }`}>
-                {isSelected && <span className="block h-2 w-2 rounded-full bg-white" />}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-foreground">{flavor.name}</p>
-                {ingredients && (
-                  <p className="mt-0.5 text-xs leading-relaxed text-muted">{ingredients}</p>
+            <div key={flavor.id} className={isDisabled ? "opacity-40" : ""}>
+              {/* flavor row */}
+              <div className={`flex items-center gap-3 px-4 py-4 ${isSelected ? "bg-wine/5" : ""}`}>
+                {/* select toggle */}
+                <button
+                  onClick={() => toggleFlavor(flavor.id)}
+                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors"
+                  style={{ borderColor: isSelected ? "var(--color-wine)" : undefined, backgroundColor: isSelected ? "var(--color-wine)" : undefined }}
+                >
+                  {isSelected && <span className="block h-2 w-2 rounded-full bg-white" />}
+                </button>
+
+                {/* name + ingredients (tappable to select) */}
+                <button
+                  onClick={() => toggleFlavor(flavor.id)}
+                  className="min-w-0 flex-1 text-left"
+                  disabled={isDisabled && !isSelected}
+                >
+                  <p className="text-sm font-medium text-foreground">{flavor.name}</p>
+                  {ingredients && (
+                    <p className="mt-0.5 text-xs leading-relaxed text-muted">{ingredients}</p>
+                  )}
+                  {isSelected && flavorAddonsTotal > 0 && (
+                    <p className="mt-0.5 text-xs text-wine">+{formatCurrency(flavorAddonsTotal)} em adicionais</p>
+                  )}
+                </button>
+
+                {/* expand arrow — only shown when selected and addons exist */}
+                {isSelected && hasAddons && (
+                  <button
+                    onClick={() => toggleExpand(flavor.id)}
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-wine/10 text-wine transition-transform"
+                    style={{ transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)" }}
+                    aria-label={isExpanded ? "Recolher adicionais" : "Ver adicionais"}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                      <path d="M2 5l5 5 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
                 )}
               </div>
-            </button>
+
+              {/* collapsible addons panel */}
+              {isSelected && hasAddons && isExpanded && (
+                <div className="border-t border-border bg-card-hover px-4 pb-3 pt-2">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
+                    Adicionais para este sabor
+                  </p>
+                  <div className="space-y-2">
+                    {addons.map((addon) => {
+                      const qty = flavorAddonQtys[addon.id] ?? 0;
+                      return (
+                        <div key={addon.id} className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm text-foreground">{addon.name}</p>
+                            {addon.price > 0 && <p className="text-xs text-wine">+{formatCurrency(addon.price)}</p>}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {qty > 0 && (
+                              <button
+                                onClick={() => decAddon(flavor.id, addon.id)}
+                                className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-card text-foreground active:bg-card-hover"
+                              >
+                                −
+                              </button>
+                            )}
+                            {qty > 0 && <span className="w-4 text-center text-sm font-medium">{qty}</span>}
+                            <button
+                              onClick={() => incAddon(flavor.id, addon.id)}
+                              className="flex h-8 w-8 items-center justify-center rounded-full border border-wine bg-wine/10 text-wine active:bg-wine/20"
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
           );
         })}
       </div>
-
-      {/* addons */}
-      {addons.length > 0 && (
-        <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
-          <div className="px-4 py-2">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted">Adicionais</p>
-          </div>
-          {addons.map((addon) => {
-            const qty = addonQtys[addon.id] ?? 0;
-            return (
-              <div key={addon.id} className="flex items-center justify-between px-4 py-3">
-                <div>
-                  <p className="text-sm text-foreground">{addon.name}</p>
-                  {addon.price > 0 && <p className="text-xs text-wine">+{formatCurrency(addon.price)}</p>}
-                </div>
-                <div className="flex items-center gap-3">
-                  {qty > 0 && (
-                    <button onClick={() => decAddon(addon.id)} className="flex h-7 w-7 items-center justify-center rounded-full border border-border bg-card text-foreground hover:bg-card-hover">−</button>
-                  )}
-                  {qty > 0 && <span className="w-4 text-center text-sm font-medium">{qty}</span>}
-                  <button onClick={() => incAddon(addon.id)} className="flex h-7 w-7 items-center justify-center rounded-full border border-wine bg-wine/10 text-wine hover:bg-wine/20">+</button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
 
       {/* notes */}
       <div className="rounded-xl border border-border bg-card px-4 py-3">
@@ -344,7 +434,7 @@ function PizzaSection({
           onChange={(e) => setNotes(e.target.value)}
           rows={2}
           placeholder="Ex: sem cebola, bem assada..."
-          className="mt-2 w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-wine"
+          className="mt-2 w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-base text-foreground placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-wine"
         />
       </div>
 
@@ -352,15 +442,15 @@ function PizzaSection({
       {canAdd && (
         <div className="flex items-center gap-3 rounded-xl border border-wine bg-card p-3">
           <div className="flex items-center gap-2">
-            <button onClick={() => setQuantity((q) => Math.max(1, q - 1))} className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-card-hover text-foreground">−</button>
+            <button onClick={() => setQuantity((q) => Math.max(1, q - 1))} className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card-hover text-foreground">−</button>
             <span className="w-5 text-center text-sm font-semibold">{quantity}</span>
-            <button onClick={() => setQuantity((q) => q + 1)} className="flex h-8 w-8 items-center justify-center rounded-full border border-wine bg-wine/10 text-wine">+</button>
+            <button onClick={() => setQuantity((q) => q + 1)} className="flex h-9 w-9 items-center justify-center rounded-full border border-wine bg-wine/10 text-wine">+</button>
           </div>
           <button
             onClick={addToCart}
-            className="flex-1 rounded-lg bg-wine px-4 py-2 text-sm font-semibold text-white hover:bg-wine-hover"
+            className="flex-1 rounded-xl bg-wine px-4 py-3 text-sm font-semibold text-white active:scale-[0.98]"
           >
-            {added ? "Adicionado!" : `Adicionar · ${formatCurrency((selectedSize!.price + Object.entries(addonQtys).reduce((s, [id, q]) => s + (addons.find(a => a.id === id)?.price ?? 0) * q, 0)) * quantity)}`}
+            {added ? "Adicionado!" : `Adicionar · ${formatCurrency((selectedSize!.price + addonsTotal) * quantity)}`}
           </button>
         </div>
       )}
