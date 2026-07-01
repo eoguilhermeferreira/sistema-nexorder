@@ -72,13 +72,13 @@ export function printOrder(order: Order) {
           addr.city && addr.state ? `${addr.city} - ${addr.state}` : addr.city ?? addr.state ?? "",
           addr.reference ? `Ref: ${addr.reference}` : "",
         ].filter(Boolean);
-        return `<p>Endereço: ${parts.join(" — ")}</p>`;
+        return `<p><strong>Endereço:</strong> <span style="color:#111;font-weight:600;">${parts.join(" — ")}</span></p>`;
       })()
     : "";
 
   const changePart =
     order.payment_method === "dinheiro" && order.change_for
-      ? `<p>Troco para: ${formatCurrency(order.change_for)}</p>`
+      ? `<p><strong>Troco para:</strong> <span style="color:#111;font-weight:600;">${formatCurrency(order.change_for)}</span></p>`
       : "";
 
   const win = window.open("", "_blank", "width=340,height=700");
@@ -115,11 +115,11 @@ export function printOrder(order: Order) {
         <h2>PEDIDO #${order.order_code}</h2>
         <p class="center">${formatTime(order.created_at)}</p>
         <hr/>
-        <p><strong>Cliente:</strong> ${order.customer_name}</p>
-        ${order.customer_phone ? `<p><strong>Tel:</strong> ${order.customer_phone}</p>` : ""}
-        <p><strong>Tipo:</strong> ${orderTypeLabels[order.type]}</p>
+        <p><strong>Cliente:</strong> <span style="color:#111;font-weight:600;">${order.customer_name}</span></p>
+        ${order.customer_phone ? `<p><strong>Tel:</strong> <span style="color:#111;font-weight:600;">${order.customer_phone}</span></p>` : ""}
+        <p><strong>Tipo:</strong> <span style="color:#111;font-weight:600;">${orderTypeLabels[order.type]}</span></p>
         ${addressHtml}
-        <p><strong>Pagamento:</strong> ${paymentLabels[order.payment_method ?? ""] ?? order.payment_method ?? "-"}</p>
+        <p><strong>Pagamento:</strong> <span style="color:#111;font-weight:600;">${paymentLabels[order.payment_method ?? ""] ?? order.payment_method ?? "-"}</span></p>
         ${changePart}
         <hr/>
         ${itemsHtml}
