@@ -38,16 +38,43 @@ export function OrderCard({ order, children }: OrderCardProps) {
       </div>
 
       {order.order_items && order.order_items.length > 0 && (
-        <ul className="mt-3 space-y-1 text-sm text-muted">
+        <ul className="mt-3 space-y-2 border-t border-border pt-3">
           {order.order_items.map((item) => (
-            <li key={item.id}>
-              {item.quantity}x {item.product_name}
+            <li key={item.id} className="text-sm">
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="font-semibold text-foreground">
+                  {item.quantity}x {item.product_name}
+                  {item.size_name ? ` (${item.size_name})` : ""}
+                </span>
+                <span className="shrink-0 text-xs text-muted">{formatCurrency(item.price * item.quantity)}</span>
+              </div>
+              {item.flavors && item.flavors.length > 0 && (
+                <p className="mt-0.5 text-xs text-muted">
+                  Sabor: {item.flavors.map((f) => f.name).join(" + ")}
+                </p>
+              )}
+              {item.border_name && (
+                <p className="text-xs text-muted">Borda: {item.border_name}</p>
+              )}
+              {item.additions && item.additions.length > 0 && (
+                <p className="text-xs text-muted">
+                  + {item.additions.map((a) => (a.qty > 1 ? `${a.name} x${a.qty}` : a.name)).join(", ")}
+                </p>
+              )}
+              {item.removed_ingredients && item.removed_ingredients.length > 0 && (
+                <p className="text-xs text-red-400">
+                  Sem: {item.removed_ingredients.join(", ")}
+                </p>
+              )}
+              {item.notes && (
+                <p className="text-xs italic text-muted">Obs: {item.notes}</p>
+              )}
             </li>
           ))}
         </ul>
       )}
 
-      {order.notes && <p className="mt-2 text-sm italic text-muted">Obs: {order.notes}</p>}
+      {order.notes && <p className="mt-2 border-t border-border pt-2 text-sm italic text-muted">Obs geral: {order.notes}</p>}
 
       {children && <div className="mt-4 flex gap-2">{children}</div>}
     </div>
