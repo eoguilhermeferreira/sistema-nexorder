@@ -19,7 +19,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <CompanyProvider company={company}>
-      <div className="flex min-h-screen bg-background">
+      <div className="flex h-screen overflow-hidden bg-background">
         <Sidebar companyName={company.fantasy_name ?? company.name} />
         <main className="flex-1 overflow-y-auto p-8">{children}</main>
       </div>
