@@ -51,8 +51,13 @@ export function printOrder(order: Order) {
         ? `<div style="margin-left:12px;font-style:italic;color:#111;font-weight:600;">Obs: ${item.notes}</div>`
         : "";
 
+      const categoryPart = item.category_name
+        ? `<div style="font-size:12px;color:#555;">${item.category_name}</div>`
+        : "";
+
       return `
         <div style="margin-bottom:10px;">
+          ${categoryPart}
           <div style="display:flex;justify-content:space-between;align-items:baseline;">
             <strong>${item.quantity}x ${item.product_name}${sizePart}</strong>
             ${pricePart}

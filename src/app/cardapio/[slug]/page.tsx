@@ -186,6 +186,7 @@ function CheckoutModal({
       items.map((item) => ({
         order_id: order.id,
         product_name: item.product_name,
+        category_name: item.category_name,
         quantity: item.quantity,
         size_name: item.size_name,
         flavors: item.flavors ?? [],

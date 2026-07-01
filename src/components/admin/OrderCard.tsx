@@ -52,6 +52,9 @@ export function OrderCard({ order, children }: OrderCardProps) {
             return (
               <li key={item.id} className="text-sm">
                 {/* product name + size + price */}
+                {item.category_name && (
+                  <p className="text-xs text-muted">{item.category_name}</p>
+                )}
                 <div className="flex items-baseline justify-between gap-2">
                   <span className="font-semibold text-foreground">
                     {item.quantity}x {item.product_name}
