@@ -96,9 +96,9 @@ export function printOrder(order: Order) {
           * { box-sizing: border-box; margin: 0; padding: 0; }
           body {
             font-family: 'Courier New', monospace;
-            font-size: 13px;
+            font-size: 16px;
             width: 80mm;
-            padding: 4mm 4mm;
+            padding: 4mm 6mm;
             color: #000;
           }
           h2 { font-size: 18px; text-align: center; margin-bottom: 4px; }
