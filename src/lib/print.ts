@@ -89,21 +89,24 @@ export function printOrder(order: Order) {
       <head>
         <title>Pedido #${order.order_code}</title>
         <style>
+          @page {
+            size: 80mm auto;
+            margin: 0;
+          }
           * { box-sizing: border-box; margin: 0; padding: 0; }
           body {
             font-family: 'Courier New', monospace;
             font-size: 13px;
-            width: 300px;
-            margin: 0 auto;
-            padding: 16px 8px;
+            width: 80mm;
+            padding: 4mm 4mm;
             color: #000;
           }
           h2 { font-size: 18px; text-align: center; margin-bottom: 4px; }
           .center { text-align: center; }
-          hr { border: none; border-top: 1px dashed #888; margin: 10px 0; }
+          hr { border: none; border-top: 1px dashed #888; margin: 6px 0; }
           .total { font-size: 15px; font-weight: bold; display: flex; justify-content: space-between; margin-top: 6px; }
           @media print {
-            body { width: 100%; padding: 0; }
+            body { width: 80mm; }
             button { display: none; }
           }
         </style>
