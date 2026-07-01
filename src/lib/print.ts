@@ -96,7 +96,7 @@ export function printOrder(order: Order) {
           * { box-sizing: border-box; margin: 0; padding: 0; }
           body {
             font-family: 'Courier New', monospace;
-            font-size: 16px;
+            font-size: 22px;
             width: 80mm;
             padding: 4mm 6mm;
             color: #000;
