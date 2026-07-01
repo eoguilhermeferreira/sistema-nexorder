@@ -12,27 +12,44 @@ export function printOrder(order: Order) {
   const itemsHtml = (order.order_items ?? [])
     .map((item) => {
       const sizePart = item.size_name ? ` (${item.size_name})` : "";
-      const flavorsPart =
-        item.flavors && item.flavors.length > 0
-          ? `<div style="margin-left:12px;color:#555;">Sabor: ${item.flavors.map((f) => f.name).join(" + ")}</div>`
-          : "";
-      const borderPart = item.border_name
-        ? `<div style="margin-left:12px;color:#555;">Borda: ${item.border_name}</div>`
-        : "";
-      const additionsPart =
-        item.additions && item.additions.length > 0
-          ? `<div style="margin-left:12px;color:#555;">+ ${item.additions
+      const pricePart = `<span style="font-size:12px;color:#555;">${formatCurrency(item.price * item.quantity)}</span>`;
+
+      // flavors with their specific addons grouped below each flavor
+      let flavorsPart = "";
+      if (item.flavors && item.flavors.length > 0) {
+        flavorsPart = item.flavors
+          .map((f) => {
+            const flavorAddons = (item.additions ?? []).filter((a) => a.flavor_name === f.name);
+            const addonLine =
+              flavorAddons.length > 0
+                ? `<div style="margin-left:20px;color:#7c1f3d;">+ ${flavorAddons
+                    .map((a) => (a.qty > 1 ? `${a.name} x${a.qty}` : a.name))
+                    .join(", ")}</div>`
+                : "";
+            return `<div style="margin-left:12px;color:#444;">• ${f.name}</div>${addonLine}`;
+          })
+          .join("");
+      }
+
+      // addons without flavor association (non-pizza)
+      const hasPerFlavorAddons = (item.additions ?? []).some((a) => a.flavor_name);
+      const genericAddonsPart =
+        !hasPerFlavorAddons && item.additions && item.additions.length > 0
+          ? `<div style="margin-left:12px;color:#7c1f3d;">+ ${item.additions
               .map((a) => (a.qty > 1 ? `${a.name} x${a.qty}` : a.name))
               .join(", ")}</div>`
           : "";
+
+      const borderPart = item.border_name
+        ? `<div style="margin-left:12px;color:#555;">Borda: ${item.border_name}</div>`
+        : "";
       const removedPart =
         item.removed_ingredients && item.removed_ingredients.length > 0
-          ? `<div style="margin-left:12px;color:#c00;">Sem: ${item.removed_ingredients.join(", ")}</div>`
+          ? `<div style="margin-left:12px;color:#c00;font-weight:bold;">SEM: ${item.removed_ingredients.join(", ")}</div>`
           : "";
       const notesPart = item.notes
         ? `<div style="margin-left:12px;font-style:italic;color:#666;">Obs: ${item.notes}</div>`
         : "";
-      const pricePart = `<div style="text-align:right;font-size:12px;color:#555;">${formatCurrency(item.price * item.quantity)}</div>`;
 
       return `
         <div style="margin-bottom:10px;">
@@ -40,7 +57,7 @@ export function printOrder(order: Order) {
             <strong>${item.quantity}x ${item.product_name}${sizePart}</strong>
             ${pricePart}
           </div>
-          ${flavorsPart}${borderPart}${additionsPart}${removedPart}${notesPart}
+          ${flavorsPart}${genericAddonsPart}${borderPart}${removedPart}${notesPart}
         </div>`;
     })
     .join("");

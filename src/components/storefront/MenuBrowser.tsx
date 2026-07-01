@@ -214,33 +214,27 @@ function PizzaSection({
     });
   }
 
-  // flatten all per-flavor addons into a single list (summing quantities)
-  function flattenAddons() {
-    const totals: Record<string, number> = {};
-    for (const flavorQtys of Object.values(addonQtys)) {
+  // build addons array preserving which flavor each addon belongs to
+  function buildAddonsArr() {
+    const arr: import("@/types/domain").AddonSelection[] = [];
+    for (const [flavorId, flavorQtys] of Object.entries(addonQtys)) {
+      const flavor = flavors.find((f) => f.id === flavorId);
       for (const [addonId, qty] of Object.entries(flavorQtys)) {
-        totals[addonId] = (totals[addonId] ?? 0) + qty;
+        if (qty <= 0) continue;
+        const a = addons.find((x) => x.id === addonId);
+        if (!a) continue;
+        arr.push({ id: addonId, name: a.name, price: a.price, qty, flavor_name: flavor?.name ?? null });
       }
     }
-    return totals;
+    return arr;
   }
 
   function addToCart() {
     if (!selectedSize || selectedFlavorIds.length === 0) return;
     const selected = flavors.filter((f) => selectedFlavorIds.includes(f.id));
-    const flat = flattenAddons();
+    const addonsArr = buildAddonsArr();
 
-    const addonsTotal = Object.entries(flat).reduce((sum, [id, qty]) => {
-      const a = addons.find((x) => x.id === id);
-      return sum + (a?.price ?? 0) * qty;
-    }, 0);
-
-    const addonsArr = Object.entries(flat)
-      .filter(([, qty]) => qty > 0)
-      .map(([id, qty]) => {
-        const a = addons.find((x) => x.id === id)!;
-        return { id, name: a.name, price: a.price, qty };
-      });
+    const addonsTotal = addonsArr.reduce((sum, a) => sum + a.price * a.qty, 0);
 
     addItem({
       product_name: category.name,
@@ -271,11 +265,7 @@ function PizzaSection({
   const canAdd = !!selectedSize && selectedFlavorIds.length > 0;
 
   // total addons price across all flavors
-  const flat = flattenAddons();
-  const addonsTotal = Object.entries(flat).reduce((sum, [id, qty]) => {
-    const a = addons.find((x) => x.id === id);
-    return sum + (a?.price ?? 0) * qty;
-  }, 0);
+  const addonsTotal = buildAddonsArr().reduce((sum, a) => sum + a.price * a.qty, 0);
 
   return (
     <div className="mt-3 space-y-3">

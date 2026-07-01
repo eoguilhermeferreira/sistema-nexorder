@@ -120,6 +120,7 @@ export interface AddonSelection {
   name: string;
   price: number;
   qty: number;
+  flavor_name?: string | null;
 }
 
 export interface Product {

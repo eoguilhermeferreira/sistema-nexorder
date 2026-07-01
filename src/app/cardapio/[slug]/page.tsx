@@ -266,14 +266,28 @@ function CheckoutModal({
                     {item.quantity}x {item.product_name}
                     {item.size_name ? ` (${item.size_name})` : ""}
                   </p>
-                  {item.flavors && item.flavors.length > 0 && (
-                    <p className="text-xs text-muted mt-0.5">{item.flavors.map((f) => f.name).join(", ")}</p>
-                  )}
-                  {item.additions && item.additions.length > 0 && (
+                  {item.flavors && item.flavors.length > 0 ? (
+                    // show each flavor with its own addons below it
+                    <div className="mt-0.5 space-y-0.5">
+                      {item.flavors.map((f) => {
+                        const flavorAddons = (item.additions ?? []).filter((a) => a.flavor_name === f.name);
+                        return (
+                          <div key={f.flavor_id}>
+                            <p className="text-xs text-muted">• {f.name}</p>
+                            {flavorAddons.length > 0 && (
+                              <p className="ml-2 text-xs text-muted">
+                                + {flavorAddons.map((a) => (a.qty > 1 ? `${a.name} x${a.qty}` : a.name)).join(", ")}
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : item.additions && item.additions.length > 0 ? (
                     <p className="text-xs text-muted mt-0.5">
                       + {item.additions.map((a) => (a.qty > 1 ? `${a.name} x${a.qty}` : a.name)).join(", ")}
                     </p>
-                  )}
+                  ) : null}
                   {item.notes && <p className="text-xs italic text-muted mt-0.5">{item.notes}</p>}
                 </div>
                 <div className="ml-3 shrink-0 text-right">

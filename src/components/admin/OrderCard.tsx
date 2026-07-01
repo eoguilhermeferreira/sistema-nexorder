@@ -38,39 +38,68 @@ export function OrderCard({ order, children }: OrderCardProps) {
       </div>
 
       {order.order_items && order.order_items.length > 0 && (
-        <ul className="mt-3 space-y-2 border-t border-border pt-3">
-          {order.order_items.map((item) => (
-            <li key={item.id} className="text-sm">
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="font-semibold text-foreground">
-                  {item.quantity}x {item.product_name}
-                  {item.size_name ? ` (${item.size_name})` : ""}
-                </span>
-                <span className="shrink-0 text-xs text-muted">{formatCurrency(item.price * item.quantity)}</span>
-              </div>
-              {item.flavors && item.flavors.length > 0 && (
-                <p className="mt-0.5 text-xs text-muted">
-                  Sabor: {item.flavors.map((f) => f.name).join(" + ")}
-                </p>
-              )}
-              {item.border_name && (
-                <p className="text-xs text-muted">Borda: {item.border_name}</p>
-              )}
-              {item.additions && item.additions.length > 0 && (
-                <p className="text-xs text-muted">
-                  + {item.additions.map((a) => (a.qty > 1 ? `${a.name} x${a.qty}` : a.name)).join(", ")}
-                </p>
-              )}
-              {item.removed_ingredients && item.removed_ingredients.length > 0 && (
-                <p className="text-xs text-red-400">
-                  Sem: {item.removed_ingredients.join(", ")}
-                </p>
-              )}
-              {item.notes && (
-                <p className="text-xs italic text-muted">Obs: {item.notes}</p>
-              )}
-            </li>
-          ))}
+        <ul className="mt-3 space-y-3 border-t border-border pt-3">
+          {order.order_items.map((item) => {
+            // group additions by flavor_name so each flavor's addons appear below it
+            const addonsPerFlavor = new Map<string | null, typeof item.additions>();
+            for (const a of item.additions ?? []) {
+              const key = a.flavor_name ?? null;
+              if (!addonsPerFlavor.has(key)) addonsPerFlavor.set(key, []);
+              addonsPerFlavor.get(key)!.push(a);
+            }
+            const hasPerFlavorAddons = [...addonsPerFlavor.keys()].some((k) => k !== null);
+
+            return (
+              <li key={item.id} className="text-sm">
+                {/* product name + size + price */}
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="font-semibold text-foreground">
+                    {item.quantity}x {item.product_name}
+                    {item.size_name ? ` (${item.size_name})` : ""}
+                  </span>
+                  <span className="shrink-0 text-xs text-muted">{formatCurrency(item.price * item.quantity)}</span>
+                </div>
+
+                {/* flavors with their specific addons inline */}
+                {item.flavors && item.flavors.length > 0 && (
+                  <div className="mt-1 space-y-0.5">
+                    {item.flavors.map((f) => {
+                      const flavorAddons = addonsPerFlavor.get(f.name) ?? [];
+                      return (
+                        <div key={f.flavor_id}>
+                          <p className="text-xs text-muted">• {f.name}</p>
+                          {flavorAddons.length > 0 && (
+                            <p className="ml-3 text-xs text-wine">
+                              + {flavorAddons.map((a) => (a.qty > 1 ? `${a.name} x${a.qty}` : a.name)).join(", ")}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* addons without flavor association (non-pizza products) */}
+                {!hasPerFlavorAddons && item.additions && item.additions.length > 0 && (
+                  <p className="mt-0.5 text-xs text-wine">
+                    + {item.additions.map((a) => (a.qty > 1 ? `${a.name} x${a.qty}` : a.name)).join(", ")}
+                  </p>
+                )}
+
+                {item.border_name && (
+                  <p className="mt-0.5 text-xs text-muted">Borda: {item.border_name}</p>
+                )}
+                {item.removed_ingredients && item.removed_ingredients.length > 0 && (
+                  <p className="mt-0.5 text-xs font-medium text-red-400">
+                    Sem: {item.removed_ingredients.join(", ")}
+                  </p>
+                )}
+                {item.notes && (
+                  <p className="mt-0.5 text-xs italic text-muted">Obs: {item.notes}</p>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
 
