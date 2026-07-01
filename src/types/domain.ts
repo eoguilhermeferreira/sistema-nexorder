@@ -73,7 +73,15 @@ export interface Category {
   display_order: number;
   active: boolean;
   is_pizza: boolean;
+  pricing_mode: "fixed" | "per_flavor";
   created_at: string | null;
+}
+
+export interface FlavorSizePrice {
+  id: string;
+  flavor_id: string;
+  size_id: string;
+  price: number;
 }
 
 export interface CategorySize {

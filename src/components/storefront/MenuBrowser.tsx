@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { Category, CategorySize, Product, Flavor, Addon } from "@/types/domain";
+import type { Category, CategorySize, Product, Flavor, Addon, FlavorSizePrice } from "@/types/domain";
 import { formatCurrency } from "@/lib/format";
 import { ProductConfigurator } from "./ProductConfigurator";
 import { useCart } from "@/contexts/CartContext";
@@ -12,11 +12,13 @@ export function MenuBrowser({
   products,
   flavors,
   addons,
+  flavorSizePrices = [],
 }: {
   categories: Category[];
   products: Product[];
   flavors: Flavor[];
   addons: Addon[];
+  flavorSizePrices?: FlavorSizePrice[];
 }) {
   const [activeProduct, setActiveProduct] = useState<{ product: Product; categoryName: string } | null>(null);
   const [activeCatId, setActiveCatId] = useState<string | null>(null);
@@ -66,6 +68,7 @@ export function MenuBrowser({
                   category={category}
                   flavors={categoryFlavors}
                   addons={categoryAddons}
+                  flavorSizePrices={flavorSizePrices}
                 />
               </div>
             );
@@ -125,10 +128,12 @@ function PizzaSection({
   category,
   flavors,
   addons,
+  flavorSizePrices,
 }: {
   category: Category;
   flavors: Flavor[];
   addons: Addon[];
+  flavorSizePrices: FlavorSizePrice[];
 }) {
   const { addItem } = useCart();
   const sizeRef = useRef<HTMLDivElement>(null);
@@ -154,7 +159,21 @@ function PizzaSection({
       .then(({ data }: any) => setSizes(data ?? []));
   }, [category.id]);
 
+  const isPerFlavor = category.pricing_mode === "per_flavor";
   const selectedSize = sizes.find((s) => s.id === selectedSizeId);
+
+  // for per_flavor mode: highest price among selected flavors for the selected size
+  function getFlavorBasePrice(): number {
+    if (!selectedSize) return 0;
+    if (!isPerFlavor) return selectedSize.price;
+    if (selectedFlavorIds.length === 0) return 0;
+    return Math.max(
+      ...selectedFlavorIds.map((fid) => {
+        const fp = flavorSizePrices.find((p) => p.flavor_id === fid && p.size_id === selectedSize.id);
+        return fp?.price ?? 0;
+      })
+    );
+  }
   const maxFlavors = selectedSize?.max_flavors ?? 1;
 
   function selectSize(id: string) {
@@ -235,6 +254,7 @@ function PizzaSection({
     const addonsArr = buildAddonsArr();
 
     const addonsTotal = addonsArr.reduce((sum, a) => sum + a.price * a.qty, 0);
+    const basePrice = getFlavorBasePrice();
 
     addItem({
       product_name: category.name,
@@ -249,7 +269,7 @@ function PizzaSection({
       additions: addonsArr.length > 0 ? addonsArr : null,
       removed_ingredients: null,
       notes: notes.trim() || null,
-      price: selectedSize.price + addonsTotal,
+      price: basePrice + addonsTotal,
     });
 
     setSelectedSizeId("");
@@ -264,8 +284,8 @@ function PizzaSection({
 
   const canAdd = !!selectedSize && selectedFlavorIds.length > 0;
 
-  // total addons price across all flavors
   const addonsTotal = buildAddonsArr().reduce((sum, a) => sum + a.price * a.qty, 0);
+  const basePrice = getFlavorBasePrice();
 
   return (
     <div className="mt-3 space-y-3">
@@ -298,7 +318,7 @@ function PizzaSection({
               >
                 <span className="text-sm font-semibold">{size.name}</span>
                 <span className={`text-xs ${selectedSizeId === size.id ? "text-white/80" : "text-muted"}`}>
-                  {formatCurrency(size.price)} · até {size.max_flavors} sabor(es)
+                  {isPerFlavor ? "preço por sabor" : formatCurrency(size.price)} · até {size.max_flavors} sabor(es)
                 </span>
               </button>
             ))}
@@ -322,6 +342,9 @@ function PizzaSection({
           const isSelected = selectedFlavorIds.includes(flavor.id);
           const ingredients = (flavor.ingredients ?? []).map((i) => i.name).join(", ");
           const isDisabled = !isSelected && selectedFlavorIds.length >= maxFlavors;
+          const flavorPrice = isPerFlavor && selectedSize
+            ? flavorSizePrices.find((p) => p.flavor_id === flavor.id && p.size_id === selectedSize.id)?.price
+            : undefined;
           const isExpanded = expandedFlavorIds.has(flavor.id);
           const flavorAddonQtys = addonQtys[flavor.id] ?? {};
           const flavorAddonsTotal = Object.entries(flavorAddonQtys).reduce((sum, [id, qty]) => {
@@ -349,7 +372,12 @@ function PizzaSection({
                   className="min-w-0 flex-1 text-left"
                   disabled={isDisabled && !isSelected}
                 >
-                  <p className="text-sm font-medium text-foreground">{flavor.name}</p>
+                  <div className="flex items-baseline gap-2">
+                    <p className="text-sm font-medium text-foreground">{flavor.name}</p>
+                    {flavorPrice != null && (
+                      <span className="text-xs font-semibold text-wine">{formatCurrency(flavorPrice)}</span>
+                    )}
+                  </div>
                   {ingredients && (
                     <p className="mt-0.5 text-xs leading-relaxed text-muted">{ingredients}</p>
                   )}
@@ -440,7 +468,7 @@ function PizzaSection({
             onClick={addToCart}
             className="flex-1 rounded-xl bg-wine px-4 py-3 text-sm font-semibold text-white active:scale-[0.98]"
           >
-            {added ? "Adicionado!" : `Adicionar · ${formatCurrency((selectedSize!.price + addonsTotal) * quantity)}`}
+            {added ? "Adicionado!" : `Adicionar · ${formatCurrency((basePrice + addonsTotal) * quantity)}`}
           </button>
         </div>
       )}

@@ -35,7 +35,7 @@ export default function CardapioPage() {
 }
 
 function CardapioContent({ storefront }: { storefront: ReturnType<typeof useStorefront> }) {
-  const { company, categories, products, flavors, addons } = storefront;
+  const { company, categories, products, flavors, addons, flavorSizePrices } = storefront;
   const [showCheckout, setShowCheckout] = useState(false);
   const { items, total } = useCart();
 
@@ -81,7 +81,7 @@ function CardapioContent({ storefront }: { storefront: ReturnType<typeof useStor
 
       {/* menu */}
       <div className="mt-4 px-4 pb-32">
-        <MenuBrowser categories={categories} products={products} flavors={flavors} addons={addons} />
+        <MenuBrowser categories={categories} products={products} flavors={flavors} addons={addons} flavorSizePrices={flavorSizePrices} />
       </div>
 
       {/* sticky cart button */}

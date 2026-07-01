@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useCompany } from "@/contexts/CompanyContext";
 import { createClient } from "@/lib/supabase/client";
 import { formatCurrency } from "@/lib/format";
-import type { Category, CategorySize, Addon, Flavor, Product } from "@/types/domain";
+import type { Category, CategorySize, Addon, Flavor, Product, FlavorSizePrice } from "@/types/domain";
 
 type Tab = "categorias" | "adicionais" | "produtos";
 
@@ -82,6 +82,7 @@ function CategoriasTab({ companyId }: { companyId: string }) {
       company_id: companyId,
       name: name.trim(),
       is_pizza: isPizza,
+      pricing_mode: "fixed",
       display_order: maxOrder,
       active: true,
     });
@@ -200,7 +201,7 @@ function AdicionaisTab({ companyId }: { companyId: string }) {
       </div>
       {selectedCat && (
         <>
-          {selectedCat.is_pizza && <TamanhosSection categoryId={selectedCatId} />}
+          {selectedCat.is_pizza && <TamanhosSection category={selectedCat} />}
           <AdicionaisSection companyId={companyId} categoryId={selectedCatId} />
         </>
       )}
@@ -208,8 +209,10 @@ function AdicionaisTab({ companyId }: { companyId: string }) {
   );
 }
 
-function TamanhosSection({ categoryId }: { categoryId: string }) {
+function TamanhosSection({ category }: { category: Category }) {
+  const categoryId = category.id;
   const [sizes, setSizes] = useState<CategorySize[]>([]);
+  const [pricingMode, setPricingMode] = useState<"fixed" | "per_flavor">(category.pricing_mode ?? "fixed");
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [maxFlavors, setMaxFlavors] = useState("2");
@@ -225,19 +228,34 @@ function TamanhosSection({ categoryId }: { categoryId: string }) {
     setSizes((data as CategorySize[]) ?? []);
   }
 
-  useEffect(() => { load(); }, [categoryId]);
+  useEffect(() => {
+    setPricingMode(category.pricing_mode ?? "fixed");
+    load();
+  }, [categoryId]);
+
+  async function savePricingMode(mode: "fixed" | "per_flavor") {
+    setPricingMode(mode);
+    await (createClient() as any).from("categories").update({ pricing_mode: mode }).eq("id", categoryId);
+  }
 
   async function addSize() {
-    if (!name.trim() || !price) return;
+    if (!name.trim()) return;
+    if (pricingMode === "fixed" && !price) return;
     setSaving(true);
     const supabase = createClient();
     const maxOrder = sizes.length > 0 ? Math.max(...sizes.map((s) => s.display_order)) + 1 : 0;
-    await (supabase as any).from("category_sizes").insert({ category_id: categoryId, name: name.trim(), price: Number(price), max_flavors: Number(maxFlavors), display_order: maxOrder });
+    await (supabase as any).from("category_sizes").insert({
+      category_id: categoryId,
+      name: name.trim(),
+      price: pricingMode === "fixed" ? Number(price) : 0,
+      max_flavors: Number(maxFlavors),
+      display_order: maxOrder,
+    });
     setName(""); setPrice(""); setMaxFlavors("2"); setSaving(false); load();
   }
 
   async function saveEdit(id: string) {
-    await (createClient() as any).from("category_sizes").update({ name: editName.trim(), price: Number(editPrice), max_flavors: Number(editMaxFlavors) }).eq("id", id);
+    await (createClient() as any).from("category_sizes").update({ name: editName.trim(), price: pricingMode === "fixed" ? Number(editPrice) : 0, max_flavors: Number(editMaxFlavors) }).eq("id", id);
     setEditId(null); load();
   }
 
@@ -249,21 +267,52 @@ function TamanhosSection({ categoryId }: { categoryId: string }) {
   return (
     <div className="rounded-xl border border-border bg-card p-4 space-y-4">
       <h3 className="text-sm font-semibold text-foreground">Tamanhos</h3>
-      <div className="grid grid-cols-3 gap-2">
+
+      {/* pricing mode toggle */}
+      <div>
+        <p className="mb-2 text-xs font-medium text-muted uppercase tracking-wide">Modelo de preço</p>
+        <div className="flex gap-2">
+          <button
+            onClick={() => savePricingMode("fixed")}
+            className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${pricingMode === "fixed" ? "bg-wine text-white" : "bg-card-hover text-muted hover:text-foreground"}`}
+          >
+            Preço fixo por tamanho
+          </button>
+          <button
+            onClick={() => savePricingMode("per_flavor")}
+            className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${pricingMode === "per_flavor" ? "bg-wine text-white" : "bg-card-hover text-muted hover:text-foreground"}`}
+          >
+            Preço por sabor
+          </button>
+        </div>
+        {pricingMode === "per_flavor" && (
+          <p className="mt-1.5 text-xs text-muted">O preço será o do sabor mais caro entre os selecionados.</p>
+        )}
+      </div>
+
+      {/* add size */}
+      <div className={`grid gap-2 ${pricingMode === "fixed" ? "grid-cols-3" : "grid-cols-2"}`}>
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Grande" className="rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground" />
-        <input value={price} onChange={(e) => setPrice(e.target.value)} type="number" min="0" step="0.01" placeholder="Preço (R$)" className="rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground" />
+        {pricingMode === "fixed" && (
+          <input value={price} onChange={(e) => setPrice(e.target.value)} type="number" min="0" step="0.01" placeholder="Preço (R$)" className="rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground" />
+        )}
         <input value={maxFlavors} onChange={(e) => setMaxFlavors(e.target.value)} type="number" min="1" placeholder="Máx sabores" className="rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground" />
       </div>
-      <button onClick={addSize} disabled={saving || !name.trim() || !price} className="rounded-lg bg-wine px-4 py-2 text-sm font-medium text-white hover:bg-wine-hover disabled:opacity-50">Adicionar tamanho</button>
+      <button onClick={addSize} disabled={saving || !name.trim() || (pricingMode === "fixed" && !price)} className="rounded-lg bg-wine px-4 py-2 text-sm font-medium text-white hover:bg-wine-hover disabled:opacity-50">
+        Adicionar tamanho
+      </button>
+
       <div className="space-y-2">
         {sizes.map((s) => (
           <div key={s.id} className="rounded-lg border border-border bg-card-hover p-3">
             {editId === s.id ? (
-              <div className="grid grid-cols-3 gap-2">
+              <div className={`grid gap-2 ${pricingMode === "fixed" ? "grid-cols-3" : "grid-cols-2"}`}>
                 <input value={editName} onChange={(e) => setEditName(e.target.value)} className="rounded-lg border border-border bg-card px-2 py-1 text-sm text-foreground" />
-                <input value={editPrice} onChange={(e) => setEditPrice(e.target.value)} type="number" className="rounded-lg border border-border bg-card px-2 py-1 text-sm text-foreground" />
+                {pricingMode === "fixed" && (
+                  <input value={editPrice} onChange={(e) => setEditPrice(e.target.value)} type="number" className="rounded-lg border border-border bg-card px-2 py-1 text-sm text-foreground" />
+                )}
                 <input value={editMaxFlavors} onChange={(e) => setEditMaxFlavors(e.target.value)} type="number" className="rounded-lg border border-border bg-card px-2 py-1 text-sm text-foreground" />
-                <div className="col-span-3 flex gap-2">
+                <div className="col-span-full flex gap-2">
                   <button onClick={() => saveEdit(s.id)} className="rounded-lg bg-wine px-3 py-1 text-xs text-white">Salvar</button>
                   <button onClick={() => setEditId(null)} className="rounded-lg bg-card px-3 py-1 text-xs text-muted">Cancelar</button>
                 </div>
@@ -272,7 +321,7 @@ function TamanhosSection({ categoryId }: { categoryId: string }) {
               <div className="flex items-center justify-between">
                 <div>
                   <span className="text-sm font-medium text-foreground">{s.name}</span>
-                  <span className="ml-3 text-sm text-muted">{formatCurrency(s.price)}</span>
+                  {pricingMode === "fixed" && <span className="ml-3 text-sm text-muted">{formatCurrency(s.price)}</span>}
                   <span className="ml-3 text-xs text-muted">até {s.max_flavors} sabor(es)</span>
                 </div>
                 <div className="flex gap-2">
@@ -369,17 +418,29 @@ function ProdutosTab({ companyId }: { companyId: string }) {
   const [loadingCats, setLoadingCats] = useState(true);
   const [loadingItems, setLoadingItems] = useState(false);
 
-  // form
+  // single add form
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
   const [saving, setSaving] = useState(false);
+
+  // bulk import
+  const [bulkMode, setBulkMode] = useState(false);
+  const [bulkText, setBulkText] = useState("");
+  const [bulkSaving, setBulkSaving] = useState(false);
+  const [bulkResult, setBulkResult] = useState("");
 
   // edit
   const [editId, setEditId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [editPrice, setEditPrice] = useState("");
+
+  // per-flavor price editing
+  const [priceEditId, setPriceEditId] = useState<string | null>(null);
+  const [sizes, setSizes] = useState<CategorySize[]>([]);
+  const [flavorPrices, setFlavorPrices] = useState<FlavorSizePrice[]>([]);
+  const [flavorPriceInputs, setFlavorPriceInputs] = useState<Record<string, string>>({});
 
   useEffect(() => {
     createClient().from("categories").select("*").eq("company_id", companyId).order("display_order").then(({ data }) => {
@@ -409,8 +470,17 @@ function ProdutosTab({ companyId }: { companyId: string }) {
     const cat = categories.find((c) => c.id === selectedCatId);
     if (!cat) return;
     loadItems(selectedCatId, cat.is_pizza);
-    setEditId(null);
+    setEditId(null); setPriceEditId(null);
     setName(""); setDescription(""); setPrice("");
+    setBulkMode(false); setBulkText(""); setBulkResult("");
+    // load sizes for per-flavor pricing
+    if (cat.is_pizza) {
+      (createClient() as any).from("category_sizes").select("*").eq("category_id", selectedCatId).order("display_order").then(({ data }: any) => {
+        setSizes((data as CategorySize[]) ?? []);
+      });
+    } else {
+      setSizes([]);
+    }
   }, [selectedCatId, categories]);
 
   async function addItem() {
@@ -431,6 +501,32 @@ function ProdutosTab({ companyId }: { companyId: string }) {
     setName(""); setDescription(""); setPrice("");
     setSaving(false);
     loadItems(selectedCatId, selectedCat.is_pizza);
+  }
+
+  async function bulkImport() {
+    if (!selectedCat?.is_pizza || !bulkText.trim()) return;
+    setBulkSaving(true);
+    setBulkResult("");
+
+    const lines = bulkText.split("\n").map((l) => l.trim()).filter(Boolean);
+    const rows = lines.map((line) => {
+      // format: "Nome | ingrediente1, ingrediente2" or just "Nome"
+      const [namePart, ingPart] = line.split("|").map((s) => s.trim());
+      const ingredients = ingPart
+        ? ingPart.split(",").map((s) => ({ name: s.trim(), removable: true })).filter((i) => i.name)
+        : [];
+      return { company_id: companyId, category_id: selectedCatId, name: namePart, ingredients, available: true };
+    });
+
+    const { error } = await (createClient() as any).from("flavors").insert(rows);
+    if (error) {
+      setBulkResult(`Erro: ${error.message}`);
+    } else {
+      setBulkResult(`${rows.length} sabor(es) importado(s) com sucesso!`);
+      setBulkText("");
+      loadItems(selectedCatId, true);
+    }
+    setBulkSaving(false);
   }
 
   async function saveEdit() {
@@ -461,6 +557,7 @@ function ProdutosTab({ companyId }: { companyId: string }) {
   function startEdit(item: Product | Flavor) {
     setEditId(item.id);
     setEditName(item.name);
+    setPriceEditId(null);
     if (selectedCat?.is_pizza) {
       const f = item as Flavor;
       setEditDescription((f.ingredients ?? []).map((i) => i.name).join(", "));
@@ -472,10 +569,34 @@ function ProdutosTab({ companyId }: { companyId: string }) {
     }
   }
 
+  async function openPriceEdit(flavorId: string) {
+    setEditId(null);
+    setPriceEditId(flavorId);
+    const { data } = await (createClient() as any).from("flavor_size_prices").select("*").eq("flavor_id", flavorId);
+    const rows = (data as FlavorSizePrice[]) ?? [];
+    setFlavorPrices(rows);
+    const inputs: Record<string, string> = {};
+    for (const s of sizes) {
+      const existing = rows.find((r) => r.size_id === s.id);
+      inputs[s.id] = existing ? String(existing.price) : "";
+    }
+    setFlavorPriceInputs(inputs);
+  }
+
+  async function saveFlavorPrices() {
+    if (!priceEditId) return;
+    const upserts = sizes
+      .filter((s) => flavorPriceInputs[s.id] !== "")
+      .map((s) => ({ flavor_id: priceEditId, size_id: s.id, price: Number(flavorPriceInputs[s.id] || 0) }));
+    await (createClient() as any).from("flavor_size_prices").upsert(upserts, { onConflict: "flavor_id,size_id" });
+    setPriceEditId(null);
+  }
+
   if (loadingCats) return <p className="text-sm text-muted">Carregando...</p>;
   if (categories.length === 0) return <p className="text-sm text-muted">Crie categorias primeiro.</p>;
 
   const isPizza = selectedCat?.is_pizza ?? false;
+  const isPerFlavor = selectedCat?.pricing_mode === "per_flavor";
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -486,36 +607,76 @@ function ProdutosTab({ companyId }: { companyId: string }) {
         </select>
       </div>
 
-      {/* add form */}
+      {/* add / bulk import */}
       <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-        <h3 className="text-sm font-semibold text-foreground">
-          {isPizza ? "Novo sabor" : "Novo produto"}
-        </h3>
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder={isPizza ? "Nome do sabor (ex: Alho e Óleo)" : "Nome do produto (ex: Esfirra de Carne)"}
-          className="w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground"
-        />
-        <textarea
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          rows={2}
-          placeholder={isPizza ? "Ingredientes separados por vírgula (ex: muçarela, alho, tomate, parmesão)" : "Ingredientes / descrição (ex: carne moída, cebola, tomate)"}
-          className="w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground"
-        />
-        {!isPizza && (
-          <input
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-            type="number" min="0" step="0.01"
-            placeholder="Preço (R$)"
-            className="w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground"
-          />
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-foreground">
+            {isPizza ? "Novo sabor" : "Novo produto"}
+          </h3>
+          {isPizza && (
+            <button
+              onClick={() => { setBulkMode(!bulkMode); setBulkResult(""); }}
+              className="text-xs text-wine hover:underline"
+            >
+              {bulkMode ? "← Adicionar um" : "Importar vários de uma vez →"}
+            </button>
+          )}
+        </div>
+
+        {bulkMode ? (
+          <>
+            <p className="text-xs text-muted">
+              Cole um sabor por linha. Ingredientes são opcionais após <code className="bg-card-hover px-1 rounded">|</code>
+              <br />
+              Ex: <span className="text-foreground">Calabresa | calabresa, cebola, azeitona</span>
+            </p>
+            <textarea
+              value={bulkText}
+              onChange={(e) => setBulkText(e.target.value)}
+              rows={10}
+              placeholder={"Margherita | muçarela, tomate, manjericão\nCalabresa | calabresa, cebola\nFrango com Catupiry\nPortuguesa | presunto, ovo, cebola, pimentão"}
+              className="w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground font-mono"
+            />
+            {bulkResult && (
+              <p className={`text-sm ${bulkResult.startsWith("Erro") ? "text-red-400" : "text-green-400"}`}>{bulkResult}</p>
+            )}
+            <button
+              onClick={bulkImport}
+              disabled={bulkSaving || !bulkText.trim()}
+              className="rounded-lg bg-wine px-4 py-2 text-sm font-medium text-white hover:bg-wine-hover disabled:opacity-50"
+            >
+              {bulkSaving ? "Importando..." : `Importar ${bulkText.split("\n").filter((l) => l.trim()).length} sabor(es)`}
+            </button>
+          </>
+        ) : (
+          <>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder={isPizza ? "Nome do sabor (ex: Alho e Óleo)" : "Nome do produto (ex: Esfirra de Carne)"}
+              className="w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground"
+            />
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={2}
+              placeholder={isPizza ? "Ingredientes separados por vírgula (ex: muçarela, alho, tomate)" : "Ingredientes / descrição"}
+              className="w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground"
+            />
+            {!isPizza && (
+              <input
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                type="number" min="0" step="0.01"
+                placeholder="Preço (R$)"
+                className="w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground"
+              />
+            )}
+            <button onClick={addItem} disabled={saving || !name.trim()} className="rounded-lg bg-wine px-4 py-2 text-sm font-medium text-white hover:bg-wine-hover disabled:opacity-50">
+              Adicionar
+            </button>
+          </>
         )}
-        <button onClick={addItem} disabled={saving || !name.trim()} className="rounded-lg bg-wine px-4 py-2 text-sm font-medium text-white hover:bg-wine-hover disabled:opacity-50">
-          Adicionar
-        </button>
       </div>
 
       {/* list */}
@@ -524,6 +685,9 @@ function ProdutosTab({ companyId }: { companyId: string }) {
       ) : (
         <div className="space-y-2">
           {items.length === 0 && <p className="text-sm text-muted">Nenhum item cadastrado.</p>}
+          {isPizza && items.length > 0 && (
+            <p className="text-xs text-muted">{items.length} sabor(es) cadastrado(s)</p>
+          )}
           {items.map((item) => {
             const desc = isPizza
               ? ((item as Flavor).ingredients ?? []).map((i) => i.name).join(", ")
@@ -544,6 +708,31 @@ function ProdutosTab({ companyId }: { companyId: string }) {
                       <button onClick={() => setEditId(null)} className="rounded-lg bg-card-hover px-3 py-1.5 text-xs text-muted">Cancelar</button>
                     </div>
                   </div>
+                ) : priceEditId === item.id ? (
+                  <div className="space-y-3">
+                    <p className="text-sm font-semibold text-foreground">{item.name} — Preços por tamanho</p>
+                    {sizes.length === 0 ? (
+                      <p className="text-xs text-muted">Cadastre tamanhos primeiro na aba Adicionais.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {sizes.map((s) => (
+                          <div key={s.id} className="flex items-center gap-3">
+                            <span className="w-28 text-sm text-foreground">{s.name}</span>
+                            <input
+                              value={flavorPriceInputs[s.id] ?? ""}
+                              onChange={(e) => setFlavorPriceInputs((prev) => ({ ...prev, [s.id]: e.target.value }))}
+                              type="number" min="0" step="0.01" placeholder="R$"
+                              className="w-28 rounded-lg border border-border bg-card-hover px-3 py-1.5 text-sm text-foreground"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      <button onClick={saveFlavorPrices} className="rounded-lg bg-wine px-3 py-1.5 text-xs font-medium text-white">Salvar preços</button>
+                      <button onClick={() => setPriceEditId(null)} className="rounded-lg bg-card-hover px-3 py-1.5 text-xs text-muted">Cancelar</button>
+                    </div>
+                  </div>
                 ) : (
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
@@ -553,6 +742,9 @@ function ProdutosTab({ companyId }: { companyId: string }) {
                     </div>
                     <div className="flex shrink-0 gap-2">
                       <button onClick={() => startEdit(item)} className="text-xs text-muted hover:text-foreground">Editar</button>
+                      {isPizza && isPerFlavor && (
+                        <button onClick={() => openPriceEdit(item.id)} className="text-xs text-wine hover:underline">Preços</button>
+                      )}
                       <button onClick={() => deleteItem(item.id)} className="text-xs text-red-400">Apagar</button>
                     </div>
                   </div>
