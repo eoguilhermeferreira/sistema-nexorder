@@ -48,7 +48,7 @@ export function printOrder(order: Order) {
           ? `<div style="margin-left:12px;color:#c00;font-weight:bold;">SEM: ${item.removed_ingredients.join(", ")}</div>`
           : "";
       const notesPart = item.notes
-        ? `<div style="margin-left:12px;font-style:italic;color:#666;">Obs: ${item.notes}</div>`
+        ? `<div style="margin-left:12px;font-style:italic;color:#111;font-weight:600;">Obs: ${item.notes}</div>`
         : "";
 
       return `
@@ -125,7 +125,7 @@ export function printOrder(order: Order) {
           <span>TOTAL</span>
           <span>${formatCurrency(order.total)}</span>
         </div>
-        ${order.notes ? `<hr/><p><em>Obs: ${order.notes}</em></p>` : ""}
+        ${order.notes ? `<hr/><p style="font-weight:600;color:#111;"><em>Obs: ${order.notes}</em></p>` : ""}
         <hr/>
         <p class="center" style="font-size:11px;color:#111;font-weight:600;margin-top:8px;">NexOrder</p>
         <br/><br/>
