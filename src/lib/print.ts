@@ -26,7 +26,7 @@ export function printOrder(order: Order) {
                     .map((a) => (a.qty > 1 ? `${a.name} x${a.qty}` : a.name))
                     .join(", ")})</span>`
                 : "";
-            return `<div style="margin-left:12px;color:#444;">• ${f.name}${addonText}</div>`;
+            return `<div style="margin-left:12px;color:#111;font-weight:600;">• ${f.name}${addonText}</div>`;
           })
           .join("");
       }
