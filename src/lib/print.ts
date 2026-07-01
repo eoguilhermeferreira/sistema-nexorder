@@ -52,7 +52,7 @@ export function printOrder(order: Order) {
         : "";
 
       const categoryPart = item.category_name
-        ? `<div style="font-size:12px;color:#555;">${item.category_name}</div>`
+        ? `<div style="font-size:12px;color:#111;font-weight:600;">${item.category_name}</div>`
         : "";
 
       return `
