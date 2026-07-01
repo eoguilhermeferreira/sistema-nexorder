@@ -508,12 +508,27 @@ function ProdutosTab({ companyId }: { companyId: string }) {
     setBulkSaving(true);
     setBulkResult("");
 
-    const lines = bulkText.split("\n").map((l) => l.trim()).filter(Boolean);
-    const rows = lines.map((line) => {
-      // format: "Nome | ingrediente1, ingrediente2" or just "Nome"
-      const [namePart, ingPart] = line.split("|").map((s) => s.trim());
-      const ingredients = ingPart
-        ? ingPart.split(",").map((s) => ({ name: s.trim(), removable: true })).filter((i) => i.name)
+    // Supports two formats:
+    // 1. Block format (name on one line, ingredients on next, blank line between):
+    //    Calabresa
+    //    Calabresa, cebola, tomate e azeitona.
+    //
+    // 2. Pipe format (everything on one line):
+    //    Calabresa | calabresa, cebola, tomate e azeitona
+    const rawBlocks = bulkText.split(/\n\s*\n/).map((b) => b.trim()).filter(Boolean);
+    const rows = rawBlocks.map((block) => {
+      if (block.includes("|")) {
+        const [namePart, ingPart] = block.split("|").map((s) => s.trim());
+        const ingredients = ingPart
+          ? ingPart.replace(/\.$/, "").split(",").map((s) => ({ name: s.trim(), removable: true })).filter((i) => i.name)
+          : [];
+        return { company_id: companyId, category_id: selectedCatId, name: namePart, ingredients, available: true };
+      }
+      const blockLines = block.split("\n").map((l) => l.trim()).filter(Boolean);
+      const namePart = blockLines[0];
+      const ingLine = blockLines.slice(1).join(" ").replace(/\.$/, "");
+      const ingredients = ingLine
+        ? ingLine.split(",").map((s) => ({ name: s.trim().replace(/ e$/, "").trim(), removable: true })).filter((i) => i.name)
         : [];
       return { company_id: companyId, category_id: selectedCatId, name: namePart, ingredients, available: true };
     });
@@ -626,15 +641,13 @@ function ProdutosTab({ companyId }: { companyId: string }) {
         {bulkMode ? (
           <>
             <p className="text-xs text-muted">
-              Cole um sabor por linha. Ingredientes são opcionais após <code className="bg-card-hover px-1 rounded">|</code>
-              <br />
-              Ex: <span className="text-foreground">Calabresa | calabresa, cebola, azeitona</span>
+              Cole nome na primeira linha e ingredientes na segunda. Separe cada sabor com uma linha em branco:
             </p>
             <textarea
               value={bulkText}
               onChange={(e) => setBulkText(e.target.value)}
-              rows={10}
-              placeholder={"Margherita | muçarela, tomate, manjericão\nCalabresa | calabresa, cebola\nFrango com Catupiry\nPortuguesa | presunto, ovo, cebola, pimentão"}
+              rows={12}
+              placeholder={"Calabresa\nCalabresa, cebola, tomate e azeitona.\n\nMargherita\nMuçarela, parmesão, manjericão, tomate e azeitona.\n\nFrango com Catupiry\nFrango, catupiry, tomate e azeitona."}
               className="w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground font-mono"
             />
             {bulkResult && (
@@ -645,7 +658,7 @@ function ProdutosTab({ companyId }: { companyId: string }) {
               disabled={bulkSaving || !bulkText.trim()}
               className="rounded-lg bg-wine px-4 py-2 text-sm font-medium text-white hover:bg-wine-hover disabled:opacity-50"
             >
-              {bulkSaving ? "Importando..." : `Importar ${bulkText.split("\n").filter((l) => l.trim()).length} sabor(es)`}
+              {bulkSaving ? "Importando..." : `Importar ${bulkText.split(/\n\s*\n/).filter((b) => b.trim()).length} sabor(es)`}
             </button>
           </>
         ) : (
