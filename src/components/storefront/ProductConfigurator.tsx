@@ -288,16 +288,22 @@ export function ProductConfigurator({
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 sm:items-center" onClick={onClose}>
       <div
-        className="flex max-h-[92vh] w-full max-w-lg flex-col rounded-t-2xl bg-background sm:rounded-2xl"
+        className="flex max-h-[92dvh] w-full max-w-lg flex-col rounded-t-3xl bg-background sm:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
+        style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       >
+        {/* drag handle */}
+        <div className="flex shrink-0 justify-center pt-3 pb-1">
+          <div className="h-1 w-10 rounded-full bg-border" />
+        </div>
+
         {/* header */}
-        <div className="flex shrink-0 items-start justify-between border-b border-border bg-card px-5 py-4">
+        <div className="flex shrink-0 items-start justify-between border-b border-border bg-card px-5 py-3">
           <div>
             <h2 className="text-base font-semibold text-foreground">{product.name}</h2>
             {product.description && <p className="mt-0.5 text-sm text-muted">{product.description}</p>}
           </div>
-          <button onClick={onClose} className="ml-4 shrink-0 text-muted hover:text-foreground">✕</button>
+          <button onClick={onClose} className="ml-4 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-card-hover text-muted">✕</button>
         </div>
 
         {/* scrollable body */}
@@ -404,14 +410,14 @@ export function ProductConfigurator({
                 onChange={(e) => setNotes(e.target.value)}
                 rows={3}
                 placeholder="Digite sua observação aqui..."
-                className="w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-wine"
+                className="w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-base text-foreground placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-wine"
               />
             </div>
           </div>
         </div>
 
         {/* sticky footer */}
-        <div className="shrink-0 border-t border-border bg-card px-5 py-4">
+        <div className="shrink-0 border-t border-border bg-card px-5 py-4 pb-safe">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <button

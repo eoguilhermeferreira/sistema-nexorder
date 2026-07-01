@@ -33,15 +33,15 @@ export function MenuBrowser({
     <div>
       {/* category pills */}
       <div className="sticky top-0 z-10 -mx-4 bg-background px-4 py-2 shadow-sm">
-        <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+        <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" } as React.CSSProperties}>
           {sortedCategories.map((cat) => (
             <button
               key={cat.id}
               onClick={() => scrollToCategory(cat.id)}
-              className={`shrink-0 rounded-full border px-4 py-1.5 text-sm font-medium transition-colors ${
+              className={`shrink-0 rounded-full border px-4 py-2 text-sm font-medium transition-colors active:scale-95 ${
                 activeCatId === cat.id
                   ? "border-wine bg-wine text-white"
-                  : "border-border bg-card text-muted hover:border-wine hover:text-foreground"
+                  : "border-border bg-card text-muted"
               }`}
             >
               {cat.name}
@@ -80,7 +80,7 @@ export function MenuBrowser({
                   <button
                     key={product.id}
                     onClick={() => setActiveProduct({ product, categoryName: category.name })}
-                    className="flex w-full items-center gap-4 px-4 py-3 text-left hover:bg-card-hover"
+                    className="flex w-full items-center gap-4 px-4 py-4 text-left active:bg-card-hover"
                   >
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-foreground">{product.name}</p>
@@ -289,8 +289,8 @@ function PizzaSection({
             <button
               key={flavor.id}
               onClick={() => toggleFlavor(flavor.id)}
-              className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors ${
-                isDisabled ? "opacity-40" : "hover:bg-card-hover"
+              className={`flex w-full items-center gap-3 px-4 py-4 text-left transition-colors ${
+                isDisabled ? "opacity-40" : "active:bg-card-hover"
               } ${isSelected ? "bg-wine/5" : ""}`}
             >
               <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
