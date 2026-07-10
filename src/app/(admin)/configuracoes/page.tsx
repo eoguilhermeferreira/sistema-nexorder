@@ -173,16 +173,30 @@ function ImageUpload({
   );
 }
 
+const COLOR_DEFAULTS: Record<string, string> = {
+  primary: "#7c1f3d",
+  secondary: "#93234a",
+  highlight: "#e11d48",
+};
+
 function ColorPicker({
   label,
+  colorKey,
   value,
   onChange,
 }: {
   label: string;
+  colorKey: "primary" | "secondary" | "highlight";
   value: string | null;
   onChange: (v: string) => void;
 }) {
-  const safeVal = value && value.startsWith("#") ? value : "#ffffff";
+  const safeVal = value && /^#[0-9a-fA-F]{6}$/.test(value) ? value : COLOR_DEFAULTS[colorKey];
+
+  function handleChange(v: string) {
+    // only update if valid full hex
+    onChange(v.startsWith("#") ? v : "#" + v);
+  }
+
   return (
     <div className="space-y-1.5">
       <span className="text-sm text-muted">{label}</span>
@@ -190,17 +204,18 @@ function ColorPicker({
         <input
           type="color"
           value={safeVal}
-          onChange={(e) => onChange(e.target.value)}
-          className="h-10 w-10 cursor-pointer rounded-lg border border-border bg-card-hover p-0.5"
+          onChange={(e) => handleChange(e.target.value)}
+          className="h-10 w-10 cursor-pointer rounded-lg border border-border p-0.5"
+          style={{ backgroundColor: safeVal }}
         />
         <input
           type="text"
           value={safeVal}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => handleChange(e.target.value)}
           maxLength={7}
           className="w-28 rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground font-mono"
         />
-        <div className="h-8 w-8 rounded-lg border border-border" style={{ backgroundColor: safeVal }} />
+        <div className="h-8 w-8 rounded-xl border border-border shadow-sm" style={{ backgroundColor: safeVal }} />
       </div>
     </div>
   );
@@ -288,9 +303,9 @@ function EmpresaTab({ companyId }: { companyId: string }) {
       <div className="rounded-xl border border-border bg-card p-4 space-y-4">
         <h3 className="text-sm font-semibold text-foreground">Cores do cardápio</h3>
         <div className="grid grid-cols-3 gap-4">
-          <ColorPicker label="Cor primária" value={company.primary_color} onChange={(v) => setCompany({ ...company, primary_color: v })} />
-          <ColorPicker label="Cor secundária" value={company.secondary_color} onChange={(v) => setCompany({ ...company, secondary_color: v })} />
-          <ColorPicker label="Cor de destaque" value={company.highlight_color} onChange={(v) => setCompany({ ...company, highlight_color: v })} />
+          <ColorPicker colorKey="primary" label="Cor principal (botões, seleções)" value={company.primary_color} onChange={(v) => setCompany({ ...company, primary_color: v })} />
+          <ColorPicker colorKey="secondary" label="Cor secundária (hover)" value={company.secondary_color} onChange={(v) => setCompany({ ...company, secondary_color: v })} />
+          <ColorPicker colorKey="highlight" label="Cor de destaque" value={company.highlight_color} onChange={(v) => setCompany({ ...company, highlight_color: v })} />
         </div>
       </div>
 

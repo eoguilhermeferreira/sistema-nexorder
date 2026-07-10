@@ -41,8 +41,20 @@ function CardapioContent({ storefront }: { storefront: ReturnType<typeof useStor
 
   if (!company) return null;
 
+  const primary = company.primary_color || "#7c1f3d";
+  const primaryHover = company.secondary_color || "#93234a";
+
   return (
-    <div className="min-h-screen bg-background" style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
+    <>
+      <style>{`
+        #cardapio-root {
+          --nexorder-wine: ${primary};
+          --nexorder-wine-hover: ${primaryHover};
+          --color-wine: ${primary};
+          --color-wine-hover: ${primaryHover};
+        }
+      `}</style>
+    <div id="cardapio-root" className="min-h-screen bg-background" style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
       {/* banner */}
       <div
         className="h-36 w-full bg-card-hover"
@@ -107,6 +119,7 @@ function CardapioContent({ storefront }: { storefront: ReturnType<typeof useStor
         <CheckoutModal storefront={storefront} onClose={() => setShowCheckout(false)} />
       )}
     </div>
+    </>
   );
 }
 
