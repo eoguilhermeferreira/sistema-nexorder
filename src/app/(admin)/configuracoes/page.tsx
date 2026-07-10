@@ -303,8 +303,8 @@ function EmpresaTab({ companyId }: { companyId: string }) {
       <div className="rounded-xl border border-border bg-card p-4 space-y-4">
         <h3 className="text-sm font-semibold text-foreground">Cores do cardápio</h3>
         <div className="grid grid-cols-3 gap-4">
-          <ColorPicker colorKey="primary" label="Cor de fundo principal (fundo da página)" value={company.primary_color} onChange={(v) => setCompany({ ...company, primary_color: v })} />
-          <ColorPicker colorKey="secondary" label="Cor de fundo secundária (cards e seções)" value={company.secondary_color} onChange={(v) => setCompany({ ...company, secondary_color: v })} />
+          <ColorPicker colorKey="primary" label="Cor do texto" value={company.primary_color} onChange={(v) => setCompany({ ...company, primary_color: v })} />
+          <ColorPicker colorKey="secondary" label="Cor secundária" value={company.secondary_color} onChange={(v) => setCompany({ ...company, secondary_color: v })} />
           <ColorPicker colorKey="highlight" label="Cor de destaque" value={company.highlight_color} onChange={(v) => setCompany({ ...company, highlight_color: v })} />
         </div>
       </div>
