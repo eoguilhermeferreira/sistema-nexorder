@@ -85,9 +85,131 @@ function SaveButton({ onClick, saving }: { onClick: () => void; saving: boolean 
   );
 }
 
+function ImageUpload({
+  label,
+  hint,
+  currentUrl,
+  onUploaded,
+  companyId,
+  field,
+}: {
+  label: string;
+  hint: string;
+  currentUrl: string | null;
+  onUploaded: (url: string) => void;
+  companyId: string;
+  field: "logo" | "banner";
+}) {
+  const [dragging, setDragging] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState("");
+
+  async function uploadFile(file: File) {
+    if (!file.type.startsWith("image/")) { setError("Apenas imagens são aceitas."); return; }
+    setUploading(true); setError("");
+    const supabase = createClient();
+    const ext = file.name.split(".").pop();
+    const path = `${companyId}/${field}-${Date.now()}.${ext}`;
+    const { error: upErr } = await supabase.storage.from("company-images").upload(path, file, { upsert: true });
+    if (upErr) { setError("Erro ao enviar imagem."); setUploading(false); return; }
+    const { data } = supabase.storage.from("company-images").getPublicUrl(path);
+    onUploaded(data.publicUrl);
+    setUploading(false);
+  }
+
+  function onDrop(e: React.DragEvent) {
+    e.preventDefault(); setDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file) uploadFile(file);
+  }
+
+  function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) uploadFile(file);
+  }
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-baseline justify-between">
+        <span className="text-sm text-muted">{label}</span>
+        <span className="text-xs text-muted">{hint}</span>
+      </div>
+      <label
+        onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={onDrop}
+        className={`relative flex min-h-[100px] cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed transition-colors ${
+          dragging ? "border-wine bg-wine/5" : "border-border bg-card-hover hover:border-wine/50"
+        }`}
+      >
+        {currentUrl ? (
+          <img
+            src={currentUrl}
+            alt={label}
+            className={`rounded-lg object-cover ${field === "logo" ? "h-20 w-20" : "h-20 w-full"}`}
+          />
+        ) : (
+          <>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-muted">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <p className="text-xs text-muted text-center px-4">
+              {uploading ? "Enviando..." : "Arraste a imagem aqui ou clique para selecionar"}
+            </p>
+          </>
+        )}
+        <input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" onChange={onFileChange} />
+        {uploading && (
+          <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-background/70">
+            <p className="text-sm text-muted">Enviando...</p>
+          </div>
+        )}
+      </label>
+      {currentUrl && (
+        <p className="text-xs text-muted truncate">{currentUrl}</p>
+      )}
+      {error && <p className="text-xs text-red-400">{error}</p>}
+    </div>
+  );
+}
+
+function ColorPicker({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string | null;
+  onChange: (v: string) => void;
+}) {
+  const safeVal = value && value.startsWith("#") ? value : "#ffffff";
+  return (
+    <div className="space-y-1.5">
+      <span className="text-sm text-muted">{label}</span>
+      <div className="flex items-center gap-2">
+        <input
+          type="color"
+          value={safeVal}
+          onChange={(e) => onChange(e.target.value)}
+          className="h-10 w-10 cursor-pointer rounded-lg border border-border bg-card-hover p-0.5"
+        />
+        <input
+          type="text"
+          value={safeVal}
+          onChange={(e) => onChange(e.target.value)}
+          maxLength={7}
+          className="w-28 rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground font-mono"
+        />
+        <div className="h-8 w-8 rounded-lg border border-border" style={{ backgroundColor: safeVal }} />
+      </div>
+    </div>
+  );
+}
+
 function EmpresaTab({ companyId }: { companyId: string }) {
   const { company, setCompany, loading } = useCompanyRow(companyId);
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   async function save() {
     if (!company) return;
@@ -119,6 +241,8 @@ function EmpresaTab({ companyId }: { companyId: string }) {
       })
       .eq("id", companyId);
     setSaving(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
   }
 
   if (loading || !company) return <p className="text-sm text-muted">Carregando...</p>;
@@ -136,7 +260,41 @@ function EmpresaTab({ companyId }: { companyId: string }) {
   );
 
   return (
-    <div className="max-w-2xl space-y-4">
+    <div className="max-w-2xl space-y-6">
+      {/* imagens */}
+      <div className="rounded-xl border border-border bg-card p-4 space-y-4">
+        <h3 className="text-sm font-semibold text-foreground">Imagens do estabelecimento</h3>
+        <div className="grid grid-cols-2 gap-4">
+          <ImageUpload
+            label="Logo / Foto de perfil"
+            hint="Recomendado: 400 × 400 px"
+            currentUrl={company.logo_url}
+            companyId={companyId}
+            field="logo"
+            onUploaded={(url) => setCompany({ ...company, logo_url: url })}
+          />
+          <ImageUpload
+            label="Capa / Banner"
+            hint="Recomendado: 1200 × 400 px"
+            currentUrl={company.banner_url}
+            companyId={companyId}
+            field="banner"
+            onUploaded={(url) => setCompany({ ...company, banner_url: url })}
+          />
+        </div>
+      </div>
+
+      {/* cores */}
+      <div className="rounded-xl border border-border bg-card p-4 space-y-4">
+        <h3 className="text-sm font-semibold text-foreground">Cores do cardápio</h3>
+        <div className="grid grid-cols-3 gap-4">
+          <ColorPicker label="Cor primária" value={company.primary_color} onChange={(v) => setCompany({ ...company, primary_color: v })} />
+          <ColorPicker label="Cor secundária" value={company.secondary_color} onChange={(v) => setCompany({ ...company, secondary_color: v })} />
+          <ColorPicker label="Cor de destaque" value={company.highlight_color} onChange={(v) => setCompany({ ...company, highlight_color: v })} />
+        </div>
+      </div>
+
+      {/* dados gerais */}
       <div className="grid grid-cols-2 gap-4">
         {field("name", "Razão social")}
         {field("fantasy_name", "Nome fantasia")}
@@ -165,15 +323,6 @@ function EmpresaTab({ companyId }: { companyId: string }) {
         {field("facebook", "Facebook")}
         {field("website", "Website")}
       </div>
-      <div className="grid grid-cols-2 gap-4">
-        {field("logo_url", "URL do logo")}
-        {field("banner_url", "URL do banner")}
-      </div>
-      <div className="grid grid-cols-3 gap-4">
-        {field("primary_color", "Cor primária", "color")}
-        {field("secondary_color", "Cor secundária", "color")}
-        {field("highlight_color", "Cor de destaque", "color")}
-      </div>
       <label className="flex items-center gap-2 text-sm">
         <input
           type="checkbox"
@@ -182,7 +331,13 @@ function EmpresaTab({ companyId }: { companyId: string }) {
         />
         <span className="text-muted">Loja aberta para pedidos</span>
       </label>
-      <SaveButton onClick={save} saving={saving} />
+      <button
+        onClick={save}
+        disabled={saving}
+        className={`rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors disabled:opacity-50 ${saved ? "bg-green-600" : "bg-wine hover:bg-wine-hover"}`}
+      >
+        {saving ? "Salvando..." : saved ? "Salvo!" : "Salvar alterações"}
+      </button>
     </div>
   );
 }
