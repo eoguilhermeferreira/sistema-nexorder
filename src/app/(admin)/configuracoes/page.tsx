@@ -300,29 +300,7 @@ function EmpresaTab({ companyId }: { companyId: string }) {
       </div>
 
       {/* dados gerais */}
-      <div className="grid grid-cols-2 gap-4">
-        {field("name", "Razão social")}
-        {field("fantasy_name", "Nome fantasia")}
-        {field("cnpj", "CNPJ")}
-        {field("email", "E-mail")}
-        {field("phone", "Telefone")}
-        {field("whatsapp", "WhatsApp")}
-      </div>
-      {field("address", "Endereço")}
-      <div className="grid grid-cols-3 gap-4">
-        {field("city", "Cidade")}
-        {field("state", "Estado")}
-        {field("zip_code", "CEP")}
-      </div>
-      <label className="block text-sm">
-        <span className="text-muted">Descrição</span>
-        <textarea
-          value={company.description ?? ""}
-          onChange={(e) => setCompany({ ...company, description: e.target.value })}
-          rows={3}
-          className="mt-1 w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-foreground"
-        />
-      </label>
+      {field("fantasy_name", "Nome da empresa")}
       <div className="grid grid-cols-3 gap-4">
         {field("instagram", "Instagram")}
         {field("facebook", "Facebook")}
