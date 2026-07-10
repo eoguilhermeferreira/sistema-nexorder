@@ -34,25 +34,45 @@ export default function CardapioPage() {
   );
 }
 
+const LIGHT_THEME = {
+  "--background": "#ffffff",
+  "--foreground": "#111111",
+  "--nexorder-card": "#f3f3f5",
+  "--nexorder-card-hover": "#e8e8ec",
+  "--nexorder-border": "#d1d1d6",
+  "--nexorder-text-muted": "#555555",
+  "--color-background": "#ffffff",
+  "--color-foreground": "#111111",
+  "--color-card": "#f3f3f5",
+  "--color-card-hover": "#e8e8ec",
+  "--color-border": "#d1d1d6",
+  "--color-muted": "#555555",
+};
+
 function CardapioContent({ storefront }: { storefront: ReturnType<typeof useStorefront> }) {
   const { company, categories, products, flavors, addons, flavorSizePrices } = storefront;
   const [showCheckout, setShowCheckout] = useState(false);
+  const [isLight, setIsLight] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("cardapio-theme") === "light";
+  });
   const { items, total } = useCart();
 
   if (!company) return null;
 
-  const textColor = company.primary_color;
+  const toggleTheme = () => {
+    const next = !isLight;
+    setIsLight(next);
+    localStorage.setItem("cardapio-theme", next ? "light" : "dark");
+  };
+
+  const themeVars = isLight
+    ? Object.entries(LIGHT_THEME).map(([k, v]) => `${k}:${v}`).join(";")
+    : "";
 
   return (
     <>
-      {textColor && (
-        <style>{`
-          #cardapio-root {
-            --foreground: ${textColor};
-            --color-foreground: ${textColor};
-          }
-        `}</style>
-      )}
+      {themeVars && <style>{`#cardapio-root{${themeVars}}`}</style>}
     <div id="cardapio-root" className="min-h-screen bg-background" style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
       {/* banner */}
       <div
@@ -76,7 +96,7 @@ function CardapioContent({ storefront }: { storefront: ReturnType<typeof useStor
           ) : (
             <div className="h-20 w-20 shrink-0 rounded-2xl border-4 border-background bg-card shadow-md" />
           )}
-          <div className="pb-1 min-w-0">
+          <div className="pb-1 min-w-0 flex-1">
             <h1 className="truncate text-lg font-bold text-foreground leading-tight">
               {company.fantasy_name ?? company.name}
             </h1>
@@ -84,6 +104,13 @@ function CardapioContent({ storefront }: { storefront: ReturnType<typeof useStor
               {company.is_open ? "Aberto agora" : "Fechado"}
             </span>
           </div>
+          <button
+            onClick={toggleTheme}
+            className="mb-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-card border border-border text-foreground text-sm"
+            title={isLight ? "Modo escuro" : "Modo claro"}
+          >
+            {isLight ? "🌙" : "☀️"}
+          </button>
         </div>
         {company.description && (
           <p className="mt-3 text-sm leading-relaxed text-muted">{company.description}</p>
