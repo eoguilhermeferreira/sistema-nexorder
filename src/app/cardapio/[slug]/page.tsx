@@ -41,17 +41,41 @@ function CardapioContent({ storefront }: { storefront: ReturnType<typeof useStor
 
   if (!company) return null;
 
-  const primary = company.primary_color || "#7c1f3d";
-  const primaryHover = company.secondary_color || "#93234a";
+  const primary = company.primary_color || "#0d0d0f";
+  const secondary = company.secondary_color || "#1a1a1d";
+
+  function isLight(hex: string) {
+    const h = hex.replace("#", "");
+    const r = parseInt(h.slice(0, 2), 16);
+    const g = parseInt(h.slice(2, 4), 16);
+    const b = parseInt(h.slice(4, 6), 16);
+    return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.5;
+  }
+
+  const light = isLight(primary);
+  const fg = light ? "#111111" : "#f5f5f5";
+  const muted = light ? "#555555" : "#a1a1aa";
+  const border = light ? "#d1d1d6" : "#2a2a2e";
+  const cardHover = isLight(secondary)
+    ? secondary + "cc"
+    : secondary.replace(/^#/, "") === "1a1a1d" ? "#232327" : secondary + "dd";
 
   return (
     <>
       <style>{`
         #cardapio-root {
-          --nexorder-wine: ${primary};
-          --nexorder-wine-hover: ${primaryHover};
-          --color-wine: ${primary};
-          --color-wine-hover: ${primaryHover};
+          --background: ${primary};
+          --foreground: ${fg};
+          --nexorder-card: ${secondary};
+          --nexorder-card-hover: ${cardHover};
+          --nexorder-border: ${border};
+          --nexorder-text-muted: ${muted};
+          --color-background: ${primary};
+          --color-foreground: ${fg};
+          --color-card: ${secondary};
+          --color-card-hover: ${cardHover};
+          --color-border: ${border};
+          --color-muted: ${muted};
         }
       `}</style>
     <div id="cardapio-root" className="min-h-screen bg-background" style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
