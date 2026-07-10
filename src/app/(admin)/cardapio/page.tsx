@@ -11,6 +11,18 @@ type Tab = "categorias" | "adicionais" | "produtos";
 export default function CardapioPage() {
   const company = useCompany();
   const [tab, setTab] = useState<Tab>("categorias");
+  const [copied, setCopied] = useState(false);
+
+  const cardapioUrl = typeof window !== "undefined"
+    ? `${window.location.origin}/cardapio/${company.slug}`
+    : `/cardapio/${company.slug}`;
+
+  function copyLink() {
+    navigator.clipboard.writeText(cardapioUrl).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
 
   return (
     <div>
@@ -23,6 +35,22 @@ export default function CardapioPage() {
         >
           Ver cardápio →
         </a>
+      </div>
+
+      {/* shareable link */}
+      <div className="mt-4 flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-medium text-muted mb-0.5">Link do cardápio para clientes</p>
+          <p className="truncate text-sm text-foreground font-mono">{cardapioUrl}</p>
+        </div>
+        <button
+          onClick={copyLink}
+          className={`shrink-0 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+            copied ? "bg-green-500/20 text-green-400" : "bg-wine text-white hover:bg-wine-hover"
+          }`}
+        >
+          {copied ? "Copiado!" : "Copiar link"}
+        </button>
       </div>
 
       <div className="mt-6 flex gap-1 rounded-lg bg-card-hover p-1 w-fit">
