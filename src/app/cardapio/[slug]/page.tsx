@@ -76,7 +76,7 @@ function CardapioContent({ storefront }: { storefront: ReturnType<typeof useStor
     <div id="cardapio-root" className="min-h-screen bg-background" style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
       {/* banner */}
       <div
-        className="h-48 w-full bg-card-hover"
+        className="h-36 w-full bg-card-hover"
         style={
           company.banner_url
             ? { backgroundImage: `url(${company.banner_url})`, backgroundSize: "cover", backgroundPosition: "center" }
@@ -85,8 +85,8 @@ function CardapioContent({ storefront }: { storefront: ReturnType<typeof useStor
       />
 
       {/* header */}
-      <div className="bg-background px-4">
-        <div className="-mt-12 flex items-end gap-3">
+      <div className="px-4">
+        <div className="-mt-10 flex items-end gap-3">
           {company.logo_url ? (
             <img
               src={company.logo_url}
