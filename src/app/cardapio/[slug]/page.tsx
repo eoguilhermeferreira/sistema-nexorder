@@ -118,7 +118,7 @@ function CardapioContent({ storefront }: { storefront: ReturnType<typeof useStor
 
         {/* redes sociais + horário de funcionamento na mesma linha */}
         {(company.instagram || company.facebook || company.website || company.business_hours_text) && (
-          <div className="mt-3 flex items-center gap-2">
+          <div className="mt-3 flex items-start gap-2">
             {company.instagram && (
               <a
                 href={company.instagram.startsWith("http") ? company.instagram : `https://instagram.com/${company.instagram.replace("@", "")}`}
@@ -171,9 +171,11 @@ function CardapioContent({ storefront }: { storefront: ReturnType<typeof useStor
               </a>
             )}
             {company.business_hours_text && (
-              <div className="min-w-0 flex-1 text-xs text-muted leading-snug">
+              <div className="min-w-0 flex-1 text-xs text-muted">
                 {company.business_hours_text.split("|").map((line, i) => (
-                  <p key={i}>{i === 0 ? `🕐 ${line.trim()}` : <>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{line.trim()}</>}</p>
+                  <p key={i} className="leading-5">
+                    {i === 0 ? "🕐 " : "     "}{line.trim()}
+                  </p>
                 ))}
               </div>
             )}
