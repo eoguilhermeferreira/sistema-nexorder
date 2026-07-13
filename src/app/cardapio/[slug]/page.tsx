@@ -116,15 +116,15 @@ function CardapioContent({ storefront }: { storefront: ReturnType<typeof useStor
           <p className="mt-3 text-sm leading-relaxed text-muted">{company.description}</p>
         )}
 
-        {/* redes sociais */}
-        {(company.instagram || company.facebook || company.website) && (
+        {/* redes sociais + horário de funcionamento na mesma linha */}
+        {(company.instagram || company.facebook || company.website || company.business_hours_text) && (
           <div className="mt-3 flex items-center gap-2">
             {company.instagram && (
               <a
                 href={company.instagram.startsWith("http") ? company.instagram : `https://instagram.com/${company.instagram.replace("@", "")}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-card border border-border hover:bg-card-hover transition-colors"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-card border border-border hover:bg-card-hover transition-colors"
                 title="Instagram"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
@@ -148,7 +148,7 @@ function CardapioContent({ storefront }: { storefront: ReturnType<typeof useStor
                 href={company.facebook.startsWith("http") ? company.facebook : `https://facebook.com/${company.facebook}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1877F2] border border-[#1877F2] hover:opacity-90 transition-opacity"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#1877F2] border border-[#1877F2] hover:opacity-90 transition-opacity"
                 title="Facebook"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
@@ -161,7 +161,7 @@ function CardapioContent({ storefront }: { storefront: ReturnType<typeof useStor
                 href={company.website.startsWith("http") ? company.website : `https://${company.website}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-card border border-border hover:bg-card-hover transition-colors text-foreground"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-card border border-border hover:bg-card-hover transition-colors text-foreground"
                 title="Website"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -170,35 +170,33 @@ function CardapioContent({ storefront }: { storefront: ReturnType<typeof useStor
                 </svg>
               </a>
             )}
+            {company.business_hours_text && (
+              <p className="min-w-0 flex-1 text-xs text-muted leading-snug line-clamp-2">
+                🕐 {company.business_hours_text}
+              </p>
+            )}
           </div>
         )}
 
-        {/* tempos de preparo */}
-        {prepTimes && (
-          <div className="mt-3 flex flex-wrap gap-2">
+        {/* tempos de preparo — todos na mesma linha */}
+        {prepTimes && (prepTimes.delivery_minutes > 0 || prepTimes.pickup_minutes > 0 || prepTimes.table_minutes > 0) && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
             {prepTimes.delivery_minutes > 0 && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-card border border-border px-3 py-1 text-xs text-muted">
+              <span className="inline-flex items-center gap-1 rounded-full bg-card border border-border px-2.5 py-1 text-xs text-muted whitespace-nowrap">
                 🛵 Entrega ~{prepTimes.delivery_minutes} min
               </span>
             )}
             {prepTimes.pickup_minutes > 0 && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-card border border-border px-3 py-1 text-xs text-muted">
+              <span className="inline-flex items-center gap-1 rounded-full bg-card border border-border px-2.5 py-1 text-xs text-muted whitespace-nowrap">
                 🏃 Retirada ~{prepTimes.pickup_minutes} min
               </span>
             )}
             {prepTimes.table_minutes > 0 && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-card border border-border px-3 py-1 text-xs text-muted">
+              <span className="inline-flex items-center gap-1 rounded-full bg-card border border-border px-2.5 py-1 text-xs text-muted whitespace-nowrap">
                 🍽️ Mesa ~{prepTimes.table_minutes} min
               </span>
             )}
           </div>
-        )}
-
-        {/* horário de funcionamento */}
-        {company.business_hours_text && (
-          <p className="mt-2 text-xs text-muted leading-relaxed">
-            🕐 {company.business_hours_text}
-          </p>
         )}
       </div>
 
