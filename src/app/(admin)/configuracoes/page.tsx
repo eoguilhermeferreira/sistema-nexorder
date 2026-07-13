@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { Database } from "@/types/database";
 import type { BusinessHours, CompanySettings, TableRestaurant } from "@/types/domain";
 
-type Tab = "empresa" | "horarios" | "mesas" | "impressoras" | "pagamento" | "notificacoes" | "sistema";
+type Tab = "empresa" | "mesas" | "impressoras" | "pagamento" | "notificacoes" | "sistema";
 
 type CompanyRow = Database["public"]["Tables"]["companies"]["Row"];
 
@@ -23,7 +23,6 @@ export default function ConfiguracoesPage() {
       <div className="mt-6 flex flex-wrap gap-1 rounded-lg bg-card-hover p-1 w-fit">
         {([
           ["empresa", "Empresa"],
-          ["horarios", "Horários"],
           ["mesas", "Mesas"],
           ["impressoras", "Impressoras"],
           ["pagamento", "Pagamento"],
@@ -42,7 +41,6 @@ export default function ConfiguracoesPage() {
 
       <div className="mt-6">
         {tab === "empresa" && <EmpresaTab companyId={company.id} />}
-        {tab === "horarios" && <HorariosTab companyId={company.id} />}
         {tab === "mesas" && <MesasTab companyId={company.id} slug={company.slug} />}
         {tab === "impressoras" && <ImpressorasTab companyId={company.id} />}
         {tab === "pagamento" && <PagamentoTab companyId={company.id} />}
