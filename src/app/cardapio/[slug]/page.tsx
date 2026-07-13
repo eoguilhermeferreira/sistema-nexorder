@@ -189,17 +189,17 @@ function CardapioContent({ storefront }: { storefront: ReturnType<typeof useStor
           <div className="mt-2 flex gap-1.5 overflow-x-auto pb-0.5">
             {prepTimes.delivery_minutes > 0 && (
               <span className="inline-flex items-center gap-1 rounded-full bg-card border border-border px-2.5 py-1 text-xs text-muted whitespace-nowrap">
-                🛵 Entrega ~{prepTimes.delivery_minutes} min
+                🛵 Entrega {prepTimes.delivery_minutes} min
               </span>
             )}
             {prepTimes.pickup_minutes > 0 && (
               <span className="inline-flex items-center gap-1 rounded-full bg-card border border-border px-2.5 py-1 text-xs text-muted whitespace-nowrap">
-                🏃 Retirada ~{prepTimes.pickup_minutes} min
+                🏃 Retirada {prepTimes.pickup_minutes} min
               </span>
             )}
             {prepTimes.table_minutes > 0 && (
               <span className="inline-flex items-center gap-1 rounded-full bg-card border border-border px-2.5 py-1 text-xs text-muted whitespace-nowrap">
-                🍽️ Mesa ~{prepTimes.table_minutes} min
+                🍽️ Mesa {prepTimes.table_minutes} min
               </span>
             )}
           </div>
