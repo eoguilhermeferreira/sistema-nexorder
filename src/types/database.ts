@@ -212,6 +212,7 @@ export type Database = {
           id: string
           instagram: string | null
           is_open: boolean | null
+          logo_shape: string | null
           logo_url: string | null
           name: string
           opening_hours: string | null
@@ -243,6 +244,7 @@ export type Database = {
           id?: string
           instagram?: string | null
           is_open?: boolean | null
+          logo_shape?: string | null
           logo_url?: string | null
           name: string
           opening_hours?: string | null
@@ -274,6 +276,7 @@ export type Database = {
           id?: string
           instagram?: string | null
           is_open?: boolean | null
+          logo_shape?: string | null
           logo_url?: string | null
           name?: string
           opening_hours?: string | null

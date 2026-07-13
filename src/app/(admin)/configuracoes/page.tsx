@@ -249,6 +249,7 @@ function EmpresaTab({ companyId }: { companyId: string }) {
         website: company.website,
         logo_url: company.logo_url,
         banner_url: company.banner_url,
+        logo_shape: company.logo_shape ?? "square",
         primary_color: company.primary_color,
         secondary_color: company.secondary_color,
         highlight_color: company.highlight_color,
@@ -296,6 +297,29 @@ function EmpresaTab({ companyId }: { companyId: string }) {
             field="banner"
             onUploaded={(url) => setCompany({ ...company, banner_url: url })}
           />
+        </div>
+
+        {/* formato da logo */}
+        <div>
+          <p className="text-sm text-muted mb-2">Formato da logo no cardápio</p>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={() => setCompany({ ...company, logo_shape: "square" })}
+              className={`flex flex-col items-center gap-2 rounded-xl border-2 px-5 py-3 transition-colors ${(company.logo_shape ?? "square") === "square" ? "border-wine bg-wine/10" : "border-border bg-card-hover"}`}
+            >
+              <div className={`h-10 w-10 rounded-lg ${(company.logo_shape ?? "square") === "square" ? "bg-wine/30" : "bg-muted/20"}`} />
+              <span className="text-xs font-medium text-foreground">Quadrado</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setCompany({ ...company, logo_shape: "round" })}
+              className={`flex flex-col items-center gap-2 rounded-xl border-2 px-5 py-3 transition-colors ${company.logo_shape === "round" ? "border-wine bg-wine/10" : "border-border bg-card-hover"}`}
+            >
+              <div className={`h-10 w-10 rounded-full ${company.logo_shape === "round" ? "bg-wine/30" : "bg-muted/20"}`} />
+              <span className="text-xs font-medium text-foreground">Redondo</span>
+            </button>
+          </div>
         </div>
       </div>
 

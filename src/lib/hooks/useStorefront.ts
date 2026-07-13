@@ -23,6 +23,7 @@ export interface StorefrontCompany {
   instagram: string | null;
   facebook: string | null;
   website: string | null;
+  logo_shape: string | null;
 }
 
 export function useStorefront(slug: string) {
@@ -42,7 +43,7 @@ export function useStorefront(slug: string) {
     const { data: companyRow } = await supabase
       .from("companies")
       .select(
-        "id, slug, name, fantasy_name, description, logo_url, banner_url, primary_color, secondary_color, highlight_color, is_open, address, city, state, whatsapp, instagram, facebook, website"
+        "id, slug, name, fantasy_name, description, logo_url, banner_url, primary_color, secondary_color, highlight_color, is_open, address, city, state, whatsapp, instagram, facebook, website, logo_shape"
       )
       .eq("slug", slug)
       .single();

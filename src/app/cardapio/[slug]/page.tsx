@@ -91,10 +91,10 @@ function CardapioContent({ storefront }: { storefront: ReturnType<typeof useStor
             <img
               src={company.logo_url}
               alt={company.name}
-              className="h-20 w-20 shrink-0 rounded-2xl border-4 border-background bg-card object-cover shadow-md"
+              className={`h-20 w-20 shrink-0 border-4 border-background bg-card object-cover shadow-md ${company.logo_shape === "round" ? "rounded-full" : "rounded-2xl"}`}
             />
           ) : (
-            <div className="h-20 w-20 shrink-0 rounded-2xl border-4 border-background bg-card shadow-md" />
+            <div className={`h-20 w-20 shrink-0 border-4 border-background bg-card shadow-md ${company.logo_shape === "round" ? "rounded-full" : "rounded-2xl"}`} />
           )}
           <div className="pb-1 min-w-0 flex-1">
             <h1 className="truncate text-lg font-bold text-foreground leading-tight">
