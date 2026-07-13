@@ -100,21 +100,9 @@ function CardapioContent({ storefront }: { storefront: ReturnType<typeof useStor
             <h1 className="truncate text-lg font-bold text-foreground leading-tight">
               {company.fantasy_name ?? company.name}
             </h1>
-            <div className="mt-0.5 flex items-start gap-2">
-              <span className={`mt-0.5 inline-block shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${company.is_open ? "bg-green-500/10 text-green-600" : "bg-red-500/10 text-red-500"}`}>
-                {company.is_open ? "Aberto agora" : "Fechado"}
-              </span>
-              {company.business_hours_text && (
-                <div>
-                  <p className="text-xs font-semibold text-foreground">Horário de Funcionamento</p>
-                  <div className="mt-0.5 text-xs text-muted leading-5">
-                    {company.business_hours_text.split("|").map((line, i) => (
-                      <p key={i}>{line.trim()}</p>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
+            <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${company.is_open ? "bg-green-500/10 text-green-600" : "bg-red-500/10 text-red-500"}`}>
+              {company.is_open ? "Aberto agora" : "Fechado"}
+            </span>
           </div>
           <button
             onClick={toggleTheme}
@@ -126,6 +114,17 @@ function CardapioContent({ storefront }: { storefront: ReturnType<typeof useStor
         </div>
         {company.description && (
           <p className="mt-3 text-sm leading-relaxed text-muted">{company.description}</p>
+        )}
+
+        {company.business_hours_text && (
+          <div className="mt-2 flex items-start gap-2">
+            <span className="shrink-0 text-xs font-semibold text-foreground">Horário de Funcionamento</span>
+            <div className="text-xs text-muted leading-5">
+              {company.business_hours_text.split("|").map((line, i) => (
+                <p key={i}>{line.trim()}</p>
+              ))}
+            </div>
+          </div>
         )}
 
         {/* redes sociais */}
