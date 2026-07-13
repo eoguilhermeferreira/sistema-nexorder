@@ -242,6 +242,7 @@ function EmpresaTab({ companyId }: { companyId: string }) {
         logo_url: company.logo_url,
         banner_url: company.banner_url,
         logo_shape: company.logo_shape ?? "square",
+        business_hours_text: company.business_hours_text,
         primary_color: company.primary_color,
         secondary_color: company.secondary_color,
         highlight_color: company.highlight_color,
@@ -322,6 +323,17 @@ function EmpresaTab({ companyId }: { companyId: string }) {
         {field("facebook", "Facebook")}
         {field("website", "Website")}
       </div>
+      <label className="block text-sm">
+        <span className="text-muted">Horário de funcionamento</span>
+        <textarea
+          rows={3}
+          value={company.business_hours_text ?? ""}
+          onChange={(e) => setCompany({ ...company, business_hours_text: e.target.value })}
+          placeholder="Ex: Seg a Sex: 18h às 23h | Sáb e Dom: 11h às 23h"
+          className="mt-1 w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-foreground text-sm resize-none"
+        />
+        <span className="text-xs text-muted">Este texto aparecerá no cardápio do cliente.</span>
+      </label>
       <label className="flex items-center gap-2 text-sm">
         <input
           type="checkbox"

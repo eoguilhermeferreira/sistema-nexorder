@@ -50,7 +50,7 @@ const LIGHT_THEME = {
 };
 
 function CardapioContent({ storefront }: { storefront: ReturnType<typeof useStorefront> }) {
-  const { company, categories, products, flavors, addons, flavorSizePrices } = storefront;
+  const { company, categories, products, flavors, addons, flavorSizePrices, prepTimes } = storefront;
   const [showCheckout, setShowCheckout] = useState(false);
   const [isLight, setIsLight] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -171,6 +171,34 @@ function CardapioContent({ storefront }: { storefront: ReturnType<typeof useStor
               </a>
             )}
           </div>
+        )}
+
+        {/* tempos de preparo */}
+        {prepTimes && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {prepTimes.delivery_minutes > 0 && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-card border border-border px-3 py-1 text-xs text-muted">
+                🛵 Entrega ~{prepTimes.delivery_minutes} min
+              </span>
+            )}
+            {prepTimes.pickup_minutes > 0 && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-card border border-border px-3 py-1 text-xs text-muted">
+                🏃 Retirada ~{prepTimes.pickup_minutes} min
+              </span>
+            )}
+            {prepTimes.table_minutes > 0 && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-card border border-border px-3 py-1 text-xs text-muted">
+                🍽️ Mesa ~{prepTimes.table_minutes} min
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* horário de funcionamento */}
+        {company.business_hours_text && (
+          <p className="mt-2 text-xs text-muted leading-relaxed">
+            🕐 {company.business_hours_text}
+          </p>
         )}
       </div>
 

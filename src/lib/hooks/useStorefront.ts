@@ -24,6 +24,13 @@ export interface StorefrontCompany {
   facebook: string | null;
   website: string | null;
   logo_shape: string | null;
+  business_hours_text: string | null;
+}
+
+export interface StorefrontPrepTimes {
+  delivery_minutes: number;
+  pickup_minutes: number;
+  table_minutes: number;
 }
 
 export function useStorefront(slug: string) {
@@ -35,6 +42,7 @@ export function useStorefront(slug: string) {
   const [flavorSizePrices, setFlavorSizePrices] = useState<FlavorSizePrice[]>([]);
   const [settings, setSettings] = useState<CompanySettings | null>(null);
   const [businessHours, setBusinessHours] = useState<BusinessHours[]>([]);
+  const [prepTimes, setPrepTimes] = useState<StorefrontPrepTimes | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
@@ -43,7 +51,7 @@ export function useStorefront(slug: string) {
     const { data: companyRow } = await supabase
       .from("companies")
       .select(
-        "id, slug, name, fantasy_name, description, logo_url, banner_url, primary_color, secondary_color, highlight_color, is_open, address, city, state, whatsapp, instagram, facebook, website, logo_shape"
+        "id, slug, name, fantasy_name, description, logo_url, banner_url, primary_color, secondary_color, highlight_color, is_open, address, city, state, whatsapp, instagram, facebook, website, logo_shape, business_hours_text"
       )
       .eq("slug", slug)
       .single();
@@ -56,7 +64,7 @@ export function useStorefront(slug: string) {
     setCompany(companyRow);
 
     const companyId = companyRow.id;
-    const [categoriesRes, productsRes, flavorsRes, addonsRes, flavorPricesRes, settingsRes, hoursRes] =
+    const [categoriesRes, productsRes, flavorsRes, addonsRes, flavorPricesRes, settingsRes, hoursRes, prepTimesRes] =
       await Promise.all([
         supabase.from("categories").select("*").eq("company_id", companyId).eq("active", true).order("display_order"),
         supabase
@@ -70,6 +78,7 @@ export function useStorefront(slug: string) {
         (supabase as any).from("flavor_size_prices").select("*"),
         supabase.from("company_settings").select("*").eq("company_id", companyId).single(),
         supabase.from("business_hours").select("*").eq("company_id", companyId).order("weekday"),
+        (supabase as any).from("prep_times").select("delivery_minutes, pickup_minutes, table_minutes").eq("company_id", companyId).single(),
       ]);
 
     setCategories((categoriesRes.data as unknown as Category[]) ?? []);
@@ -79,6 +88,7 @@ export function useStorefront(slug: string) {
     setFlavorSizePrices((flavorPricesRes.data as unknown as FlavorSizePrice[]) ?? []);
     setSettings((settingsRes.data as unknown as CompanySettings) ?? null);
     setBusinessHours((hoursRes.data as unknown as BusinessHours[]) ?? []);
+    setPrepTimes((prepTimesRes.data as StorefrontPrepTimes) ?? null);
     setLoading(false);
   }, [slug]);
 
@@ -86,5 +96,5 @@ export function useStorefront(slug: string) {
     fetchAll();
   }, [fetchAll]);
 
-  return { company, categories, products, flavors, addons, flavorSizePrices, settings, businessHours, loading, notFound, refetch: fetchAll };
+  return { company, categories, products, flavors, addons, flavorSizePrices, settings, businessHours, prepTimes, loading, notFound, refetch: fetchAll };
 }
