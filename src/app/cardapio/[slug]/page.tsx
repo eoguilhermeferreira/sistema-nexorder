@@ -84,17 +84,17 @@ function CardapioContent({ storefront }: { storefront: ReturnType<typeof useStor
         }
       />
 
-      {/* header */}
-      <div className="px-4">
-        <div className="-mt-10 flex items-end gap-3">
+      {/* header — bg raised to cover name area */}
+      <div className="-mt-8 rounded-t-2xl bg-background px-4 pt-2">
+        <div className="flex items-end gap-3">
           {company.logo_url ? (
             <img
               src={company.logo_url}
               alt={company.name}
-              className="h-20 w-20 shrink-0 rounded-2xl border-4 border-background bg-card object-cover shadow-md"
+              className="-mt-10 h-20 w-20 shrink-0 rounded-2xl border-4 border-background bg-card object-cover shadow-md"
             />
           ) : (
-            <div className="h-20 w-20 shrink-0 rounded-2xl border-4 border-background bg-card shadow-md" />
+            <div className="-mt-10 h-20 w-20 shrink-0 rounded-2xl border-4 border-background bg-card shadow-md" />
           )}
           <div className="pb-1 min-w-0 flex-1">
             <h1 className="truncate text-lg font-bold text-foreground leading-tight">
