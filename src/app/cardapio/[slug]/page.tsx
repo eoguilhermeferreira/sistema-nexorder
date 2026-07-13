@@ -186,7 +186,7 @@ function CardapioContent({ storefront }: { storefront: ReturnType<typeof useStor
 
         {/* tempos de preparo — todos na mesma linha */}
         {prepTimes && (prepTimes.delivery_minutes > 0 || prepTimes.pickup_minutes > 0 || prepTimes.table_minutes > 0) && (
-          <div className="mt-2 flex flex-wrap gap-1.5">
+          <div className="mt-2 flex gap-1.5 overflow-x-auto pb-0.5">
             {prepTimes.delivery_minutes > 0 && (
               <span className="inline-flex items-center gap-1 rounded-full bg-card border border-border px-2.5 py-1 text-xs text-muted whitespace-nowrap">
                 🛵 Entrega ~{prepTimes.delivery_minutes} min
