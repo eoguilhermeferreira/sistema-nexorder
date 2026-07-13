@@ -112,6 +112,8 @@ export interface Flavor {
   image_url: string | null;
   ingredients: { name: string; removable: boolean }[];
   available: boolean;
+  is_sweet: boolean;
+  sweet_surcharge: number;
 }
 
 export interface Addon {

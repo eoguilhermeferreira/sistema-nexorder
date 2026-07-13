@@ -162,17 +162,26 @@ function PizzaSection({
   const isPerFlavor = category.pricing_mode === "per_flavor";
   const selectedSize = sizes.find((s) => s.id === selectedSizeId);
 
-  // for per_flavor mode: highest price among selected flavors for the selected size
+  // sweet surcharge: sum of sweet_surcharge of selected sweet flavors
+  function getSweetSurcharge(): number {
+    return selectedFlavorIds.reduce((sum, fid) => {
+      const f = flavors.find((x) => x.id === fid);
+      return sum + (f?.is_sweet ? (f.sweet_surcharge ?? 0) : 0);
+    }, 0);
+  }
+
+  // for per_flavor mode: highest price among selected flavors for the selected size + sweet surcharge
   function getFlavorBasePrice(): number {
     if (!selectedSize) return 0;
-    if (!isPerFlavor) return selectedSize.price;
+    const sweetExtra = getSweetSurcharge();
+    if (!isPerFlavor) return selectedSize.price + sweetExtra;
     if (selectedFlavorIds.length === 0) return 0;
     return Math.max(
       ...selectedFlavorIds.map((fid) => {
         const fp = flavorSizePrices.find((p) => p.flavor_id === fid && p.size_id === selectedSize.id);
         return fp?.price ?? 0;
       })
-    );
+    ) + sweetExtra;
   }
   const maxFlavors = selectedSize?.max_flavors ?? 1;
 
@@ -338,7 +347,20 @@ function PizzaSection({
             )}
           </p>
         </div>
-        {flavors.map((flavor) => {
+        {(() => {
+          const salgados = flavors.filter((f) => !f.is_sweet);
+          const doces = flavors.filter((f) => f.is_sweet);
+          const allGroups: { label: string | null; pink: boolean; list: typeof flavors }[] = [];
+          if (salgados.length > 0) allGroups.push({ label: doces.length > 0 ? "🧀 Pizzas Salgadas" : null, pink: false, list: salgados });
+          if (doces.length > 0) allGroups.push({ label: "🍫 Pizzas Doces", pink: true, list: doces });
+          return allGroups.map(({ label, pink, list }) => (
+            <div key={label ?? "salgadas"}>
+              {label && (
+                <div className={`px-4 py-2 border-t border-border ${pink ? "bg-pink-500/5" : "bg-card-hover"}`}>
+                  <p className={`text-xs font-semibold uppercase tracking-wider ${pink ? "text-pink-400" : "text-muted"}`}>{label}</p>
+                </div>
+              )}
+              {list.map((flavor) => {
           const isSelected = selectedFlavorIds.includes(flavor.id);
           const ingredients = (flavor.ingredients ?? []).map((i) => i.name).join(", ");
           const isDisabled = !isSelected && selectedFlavorIds.length >= maxFlavors;
@@ -372,10 +394,13 @@ function PizzaSection({
                   className="min-w-0 flex-1 text-left"
                   disabled={isDisabled && !isSelected}
                 >
-                  <div className="flex items-baseline gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <p className="text-sm font-medium text-foreground">{flavor.name}</p>
                     {flavorPrice != null && (
                       <span className="text-xs font-semibold text-wine">{formatCurrency(flavorPrice)}</span>
+                    )}
+                    {flavor.is_sweet && flavor.sweet_surcharge > 0 && (
+                      <span className="text-xs font-semibold text-pink-400">+{formatCurrency(flavor.sweet_surcharge)}</span>
                     )}
                   </div>
                   {ingredients && (
@@ -442,6 +467,9 @@ function PizzaSection({
             </div>
           );
         })}
+            </div>
+          ));
+        })()}
       </div>
 
       {/* notes */}

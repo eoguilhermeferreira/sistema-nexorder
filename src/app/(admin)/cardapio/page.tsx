@@ -450,6 +450,8 @@ function ProdutosTab({ companyId }: { companyId: string }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
+  const [isSweet, setIsSweet] = useState(false);
+  const [sweetSurcharge, setSweetSurcharge] = useState("");
   const [saving, setSaving] = useState(false);
 
   // bulk import
@@ -463,6 +465,8 @@ function ProdutosTab({ companyId }: { companyId: string }) {
   const [editName, setEditName] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [editPrice, setEditPrice] = useState("");
+  const [editIsSweet, setEditIsSweet] = useState(false);
+  const [editSweetSurcharge, setEditSweetSurcharge] = useState("");
 
   // per-flavor price editing
   const [priceEditId, setPriceEditId] = useState<string | null>(null);
@@ -518,7 +522,7 @@ function ProdutosTab({ companyId }: { companyId: string }) {
       const ingredients = description.trim()
         ? description.split(",").map((s) => ({ name: s.trim(), removable: true })).filter((i) => i.name)
         : [];
-      await (createClient() as any).from("flavors").insert({ company_id: companyId, category_id: selectedCatId, name: name.trim(), ingredients, available: true });
+      await (createClient() as any).from("flavors").insert({ company_id: companyId, category_id: selectedCatId, name: name.trim(), ingredients, available: true, is_sweet: isSweet, sweet_surcharge: isSweet ? Number(sweetSurcharge || 0) : 0 });
     } else {
       await createClient().from("products").insert({
         company_id: companyId, category_id: selectedCatId, product_type: "comum",
@@ -526,7 +530,7 @@ function ProdutosTab({ companyId }: { companyId: string }) {
         base_price: price ? Number(price) : 0, active: true,
       });
     }
-    setName(""); setDescription(""); setPrice("");
+    setName(""); setDescription(""); setPrice(""); setIsSweet(false); setSweetSurcharge("");
     setSaving(false);
     loadItems(selectedCatId, selectedCat.is_pizza);
   }
@@ -579,7 +583,7 @@ function ProdutosTab({ companyId }: { companyId: string }) {
       const ingredients = editDescription.trim()
         ? editDescription.split(",").map((s) => ({ name: s.trim(), removable: true })).filter((i) => i.name)
         : [];
-      await (createClient() as any).from("flavors").update({ name: editName.trim(), ingredients }).eq("id", editId);
+      await (createClient() as any).from("flavors").update({ name: editName.trim(), ingredients, is_sweet: editIsSweet, sweet_surcharge: editIsSweet ? Number(editSweetSurcharge || 0) : 0 }).eq("id", editId);
     } else {
       await createClient().from("products").update({ name: editName.trim(), description: editDescription.trim() || null, base_price: Number(editPrice) }).eq("id", editId);
     }
@@ -605,6 +609,8 @@ function ProdutosTab({ companyId }: { companyId: string }) {
     if (selectedCat?.is_pizza) {
       const f = item as Flavor;
       setEditDescription((f.ingredients ?? []).map((i) => i.name).join(", "));
+      setEditIsSweet(f.is_sweet ?? false);
+      setEditSweetSurcharge(f.sweet_surcharge ? String(f.sweet_surcharge) : "");
       setEditPrice("");
     } else {
       const p = item as Product;
@@ -705,6 +711,34 @@ function ProdutosTab({ companyId }: { companyId: string }) {
               placeholder={isPizza ? "Ingredientes separados por vírgula (ex: muçarela, alho, tomate)" : "Ingredientes / descrição"}
               className="w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground"
             />
+            {isPizza && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted">Tipo:</span>
+                <button
+                  type="button"
+                  onClick={() => setIsSweet(false)}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${!isSweet ? "bg-wine text-white" : "bg-card-hover text-muted"}`}
+                >
+                  🧀 Salgado
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsSweet(true)}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${isSweet ? "bg-pink-500 text-white" : "bg-card-hover text-muted"}`}
+                >
+                  🍫 Doce
+                </button>
+                {isSweet && (
+                  <input
+                    value={sweetSurcharge}
+                    onChange={(e) => setSweetSurcharge(e.target.value)}
+                    type="number" min="0" step="0.01"
+                    placeholder="Acréscimo R$"
+                    className="ml-2 w-36 rounded-lg border border-border bg-card-hover px-3 py-1.5 text-sm text-foreground"
+                  />
+                )}
+              </div>
+            )}
             {!isPizza && (
               <input
                 value={price}
@@ -730,63 +764,115 @@ function ProdutosTab({ companyId }: { companyId: string }) {
           {isPizza && items.length > 0 && (
             <p className="text-xs text-muted">{items.length} sabor(es) cadastrado(s)</p>
           )}
-          {items.map((item) => {
-            const desc = isPizza
-              ? ((item as Flavor).ingredients ?? []).map((i) => i.name).join(", ")
-              : (item as Product).description ?? "";
-            const itemPrice = isPizza ? null : (item as Product).base_price;
-
+          {isPizza && (() => {
+            const salgados = (items as Flavor[]).filter((f) => !f.is_sweet);
+            const doces = (items as Flavor[]).filter((f) => f.is_sweet);
+            const renderItem = (item: Flavor) => {
+              const desc = (item.ingredients ?? []).map((i) => i.name).join(", ");
+              return (
+                <div key={item.id} className="rounded-xl border border-border bg-card p-4">
+                  {editId === item.id ? (
+                    <div className="space-y-2">
+                      <input value={editName} onChange={(e) => setEditName(e.target.value)} className="w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground" />
+                      <textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)} rows={2} className="w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground" />
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted">Tipo:</span>
+                        <button type="button" onClick={() => setEditIsSweet(false)} className={`rounded-lg px-3 py-1.5 text-xs font-medium ${!editIsSweet ? "bg-wine text-white" : "bg-card-hover text-muted"}`}>🧀 Salgado</button>
+                        <button type="button" onClick={() => setEditIsSweet(true)} className={`rounded-lg px-3 py-1.5 text-xs font-medium ${editIsSweet ? "bg-pink-500 text-white" : "bg-card-hover text-muted"}`}>🍫 Doce</button>
+                        {editIsSweet && (
+                          <input value={editSweetSurcharge} onChange={(e) => setEditSweetSurcharge(e.target.value)} type="number" min="0" step="0.01" placeholder="Acréscimo R$" className="ml-2 w-36 rounded-lg border border-border bg-card-hover px-3 py-1.5 text-sm text-foreground" />
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={saveEdit} className="rounded-lg bg-wine px-3 py-1.5 text-xs font-medium text-white">Salvar</button>
+                        <button onClick={() => setEditId(null)} className="rounded-lg bg-card-hover px-3 py-1.5 text-xs text-muted">Cancelar</button>
+                      </div>
+                    </div>
+                  ) : priceEditId === item.id ? (
+                    <div className="space-y-3">
+                      <p className="text-sm font-semibold text-foreground">{item.name} — Preços por tamanho</p>
+                      {sizes.length === 0 ? (
+                        <p className="text-xs text-muted">Cadastre tamanhos primeiro na aba Adicionais.</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {sizes.map((s) => (
+                            <div key={s.id} className="flex items-center gap-3">
+                              <span className="w-28 text-sm text-foreground">{s.name}</span>
+                              <input value={flavorPriceInputs[s.id] ?? ""} onChange={(e) => setFlavorPriceInputs((prev) => ({ ...prev, [s.id]: e.target.value }))} type="number" min="0" step="0.01" placeholder="R$" className="w-28 rounded-lg border border-border bg-card-hover px-3 py-1.5 text-sm text-foreground" />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <div className="flex gap-2">
+                        <button onClick={saveFlavorPrices} className="rounded-lg bg-wine px-3 py-1.5 text-xs font-medium text-white">Salvar preços</button>
+                        <button onClick={() => setPriceEditId(null)} className="rounded-lg bg-card-hover px-3 py-1.5 text-xs text-muted">Cancelar</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium text-foreground">{item.name}</p>
+                          {item.is_sweet && (
+                            <span className="rounded-full bg-pink-500/15 px-2 py-0.5 text-xs font-medium text-pink-400">
+                              🍫 Doce {item.sweet_surcharge > 0 ? `+${formatCurrency(item.sweet_surcharge)}` : ""}
+                            </span>
+                          )}
+                        </div>
+                        {desc && <p className="mt-0.5 text-xs text-muted">{desc}</p>}
+                      </div>
+                      <div className="flex shrink-0 gap-2">
+                        <button onClick={() => startEdit(item)} className="text-xs text-muted hover:text-foreground">Editar</button>
+                        {isPerFlavor && (
+                          <button onClick={() => openPriceEdit(item.id)} className="text-xs text-wine hover:underline">Preços</button>
+                        )}
+                        <button onClick={() => deleteItem(item.id)} className="text-xs text-red-400">Apagar</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            };
+            return (
+              <>
+                {salgados.length > 0 && (
+                  <>
+                    <p className="text-xs font-semibold text-muted uppercase tracking-wider mt-2">🧀 Pizzas Salgadas ({salgados.length})</p>
+                    {salgados.map(renderItem)}
+                  </>
+                )}
+                {doces.length > 0 && (
+                  <>
+                    <p className="text-xs font-semibold text-pink-400 uppercase tracking-wider mt-4">🍫 Pizzas Doces ({doces.length})</p>
+                    {doces.map(renderItem)}
+                  </>
+                )}
+              </>
+            );
+          })()}
+          {!isPizza && items.map((item) => {
+            const p = item as Product;
             return (
               <div key={item.id} className="rounded-xl border border-border bg-card p-4">
                 {editId === item.id ? (
                   <div className="space-y-2">
                     <input value={editName} onChange={(e) => setEditName(e.target.value)} className="w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground" />
                     <textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)} rows={2} className="w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground" />
-                    {!isPizza && (
-                      <input value={editPrice} onChange={(e) => setEditPrice(e.target.value)} type="number" className="w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground" />
-                    )}
+                    <input value={editPrice} onChange={(e) => setEditPrice(e.target.value)} type="number" className="w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground" />
                     <div className="flex gap-2">
                       <button onClick={saveEdit} className="rounded-lg bg-wine px-3 py-1.5 text-xs font-medium text-white">Salvar</button>
                       <button onClick={() => setEditId(null)} className="rounded-lg bg-card-hover px-3 py-1.5 text-xs text-muted">Cancelar</button>
                     </div>
                   </div>
-                ) : priceEditId === item.id ? (
-                  <div className="space-y-3">
-                    <p className="text-sm font-semibold text-foreground">{item.name} — Preços por tamanho</p>
-                    {sizes.length === 0 ? (
-                      <p className="text-xs text-muted">Cadastre tamanhos primeiro na aba Adicionais.</p>
-                    ) : (
-                      <div className="space-y-2">
-                        {sizes.map((s) => (
-                          <div key={s.id} className="flex items-center gap-3">
-                            <span className="w-28 text-sm text-foreground">{s.name}</span>
-                            <input
-                              value={flavorPriceInputs[s.id] ?? ""}
-                              onChange={(e) => setFlavorPriceInputs((prev) => ({ ...prev, [s.id]: e.target.value }))}
-                              type="number" min="0" step="0.01" placeholder="R$"
-                              className="w-28 rounded-lg border border-border bg-card-hover px-3 py-1.5 text-sm text-foreground"
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    <div className="flex gap-2">
-                      <button onClick={saveFlavorPrices} className="rounded-lg bg-wine px-3 py-1.5 text-xs font-medium text-white">Salvar preços</button>
-                      <button onClick={() => setPriceEditId(null)} className="rounded-lg bg-card-hover px-3 py-1.5 text-xs text-muted">Cancelar</button>
-                    </div>
-                  </div>
                 ) : (
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-foreground">{item.name}</p>
-                      {desc && <p className="mt-0.5 text-xs text-muted">{desc}</p>}
-                      {itemPrice != null && <p className="mt-1 text-sm font-semibold text-wine">{formatCurrency(itemPrice)}</p>}
+                      <p className="text-sm font-medium text-foreground">{p.name}</p>
+                      {p.description && <p className="mt-0.5 text-xs text-muted">{p.description}</p>}
+                      <p className="mt-1 text-sm font-semibold text-wine">{formatCurrency(p.base_price)}</p>
                     </div>
                     <div className="flex shrink-0 gap-2">
                       <button onClick={() => startEdit(item)} className="text-xs text-muted hover:text-foreground">Editar</button>
-                      {isPizza && isPerFlavor && (
-                        <button onClick={() => openPriceEdit(item.id)} className="text-xs text-wine hover:underline">Preços</button>
-                      )}
                       <button onClick={() => deleteItem(item.id)} className="text-xs text-red-400">Apagar</button>
                     </div>
                   </div>
