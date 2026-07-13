@@ -28,7 +28,10 @@ export function MenuBrowser({
 
   function scrollToCategory(catId: string) {
     setActiveCatId(catId);
-    sectionRefs.current[catId]?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const el = sectionRefs.current[catId];
+    if (!el) return;
+    const top = el.getBoundingClientRect().top + window.scrollY - 64;
+    window.scrollTo({ top, behavior: "smooth" });
   }
 
   return (
