@@ -86,7 +86,7 @@ function CardapioContent({ storefront }: { storefront: ReturnType<typeof useStor
 
       {/* header */}
       <div className="px-4">
-        <div className="-mt-10 flex items-end gap-3">
+        <div className="-mt-6 flex items-end gap-3">
           {company.logo_url ? (
             <img
               src={company.logo_url}
