@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { Product, Flavor, Addon, AddonSelection } from "@/types/domain";
+import type { Product, Flavor, Addon, AddonSelection, AddonSizePrice } from "@/types/domain";
 import { formatCurrency } from "@/lib/format";
 import { useCart } from "@/contexts/CartContext";
 
@@ -120,32 +120,54 @@ function FlavorCard({
 
 // ─── addon row ─────────────────────────────────────────────────────────────────
 
-function AddonRow({ addon, qty, onInc, onDec }: { addon: Addon; qty: number; onInc: () => void; onDec: () => void }) {
+function AddonRow({
+  addon, qty, onInc, onDec, sizePrice, mode, onModeChange,
+}: {
+  addon: Addon;
+  qty: number;
+  onInc: () => void;
+  onDec: () => void;
+  sizePrice?: { price_half: number; price_whole: number } | null;
+  mode: "half" | "whole";
+  onModeChange: (m: "half" | "whole") => void;
+}) {
+  const displayPrice = sizePrice
+    ? (mode === "half" ? sizePrice.price_half : sizePrice.price_whole)
+    : addon.price;
+
   return (
-    <div className="flex items-center justify-between border-b border-border px-4 py-3 last:border-0">
-      <div>
-        <p className="text-sm text-foreground">{addon.name}</p>
-        <p className="text-xs text-wine">+{formatCurrency(addon.price)}</p>
+    <div className="border-b border-border px-4 py-3 last:border-0">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm text-foreground">{addon.name}</p>
+          {displayPrice > 0 && <p className="text-xs text-wine">+{formatCurrency(displayPrice)}</p>}
+        </div>
+        <div className="flex items-center gap-3">
+          {qty > 0 && (
+            <button type="button" onClick={onDec} className="flex h-7 w-7 items-center justify-center rounded-full border border-border bg-card text-foreground hover:bg-card-hover">−</button>
+          )}
+          {qty > 0 && <span className="w-4 text-center text-sm font-medium text-foreground">{qty}</span>}
+          <button type="button" onClick={onInc} className="flex h-7 w-7 items-center justify-center rounded-full border border-wine bg-wine/10 text-wine hover:bg-wine/20">+</button>
+        </div>
       </div>
-      <div className="flex items-center gap-3">
-        {qty > 0 && (
+      {sizePrice && qty > 0 && (
+        <div className="mt-2 flex gap-2">
           <button
             type="button"
-            onClick={onDec}
-            className="flex h-7 w-7 items-center justify-center rounded-full border border-border bg-card text-foreground hover:bg-card-hover"
+            onClick={() => onModeChange("half")}
+            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${mode === "half" ? "bg-wine text-white" : "bg-card-hover text-muted"}`}
           >
-            −
+            Metade
           </button>
-        )}
-        {qty > 0 && <span className="w-4 text-center text-sm font-medium text-foreground">{qty}</span>}
-        <button
-          type="button"
-          onClick={onInc}
-          className="flex h-7 w-7 items-center justify-center rounded-full border border-wine bg-wine/10 text-wine hover:bg-wine/20"
-        >
-          +
-        </button>
-      </div>
+          <button
+            type="button"
+            onClick={() => onModeChange("whole")}
+            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${mode === "whole" ? "bg-wine text-white" : "bg-card-hover text-muted"}`}
+          >
+            Inteira
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -157,12 +179,14 @@ export function ProductConfigurator({
   categoryName,
   flavors,
   addons,
+  addonSizePrices = [],
   onClose,
 }: {
   product: Product;
   categoryName?: string;
   flavors: Flavor[];
   addons: Addon[];
+  addonSizePrices?: AddonSizePrice[];
   onClose: () => void;
 }) {
   const { addItem } = useCart();
@@ -200,6 +224,7 @@ export function ProductConfigurator({
   const [expandedFlavorId, setExpandedFlavorId] = useState<string | null>(null);
   const [removedByFlavor, setRemovedByFlavor] = useState<Record<string, string[]>>({});
   const [addonQtys, setAddonQtys] = useState<Record<string, number>>({});
+  const [addonModes, setAddonModes] = useState<Record<string, "half" | "whole">>({});
   const [borderId, setBorderId] = useState<string>("");
   const [notes, setNotes] = useState("");
   const [quantity, setQuantity] = useState(1);
@@ -210,8 +235,15 @@ export function ProductConfigurator({
 
   // compute price
   const addonsTotal = Object.entries(addonQtys).reduce((sum, [id, qty]) => {
-    const a = addons.find((x) => x.id === id);
-    return sum + (a?.price ?? 0) * qty;
+    const sp = addonSizePrices.find((p) => p.addon_id === id && p.size_id === sizeId);
+    let unitPrice: number;
+    if (sp) {
+      unitPrice = (addonModes[id] ?? "whole") === "half" ? sp.price_half : sp.price_whole;
+    } else {
+      const a = addons.find((x) => x.id === id);
+      unitPrice = a?.price ?? 0;
+    }
+    return sum + unitPrice * qty;
   }, 0);
   const borderPrice = selectedBorder?.price ?? 0;
   const basePrice = isPizza ? selectedSize?.price ?? 0 : product.base_price;
@@ -262,7 +294,10 @@ export function ProductConfigurator({
       .filter(([, qty]) => qty > 0)
       .map(([id, qty]) => {
         const a = addons.find((x) => x.id === id)!;
-        return { id, name: a.name, price: a.price, qty };
+        const sp = addonSizePrices.find((p) => p.addon_id === id && p.size_id === sizeId);
+        const mode = addonModes[id] ?? "whole";
+        const price = sp ? (mode === "half" ? sp.price_half : sp.price_whole) : a.price;
+        return { id, name: a.name, price, qty, mode: sp ? mode : null };
       });
 
     addItem({
@@ -363,15 +398,21 @@ export function ProductConfigurator({
           {regularAddonGroups.map(({ group, items }) => (
             <div key={group ?? "__ungrouped"}>
               <SectionHeader title={group ?? "Adicionais"} subtitle="Escolha os extras desejados" />
-              {items.map((addon) => (
-                <AddonRow
-                  key={addon.id}
-                  addon={addon}
-                  qty={addonQtys[addon.id] ?? 0}
-                  onInc={() => incAddon(addon.id)}
-                  onDec={() => decAddon(addon.id)}
-                />
-              ))}
+              {items.map((addon) => {
+                const sp = addonSizePrices.find((p) => p.addon_id === addon.id && p.size_id === sizeId) ?? null;
+                return (
+                  <AddonRow
+                    key={addon.id}
+                    addon={addon}
+                    qty={addonQtys[addon.id] ?? 0}
+                    onInc={() => incAddon(addon.id)}
+                    onDec={() => decAddon(addon.id)}
+                    sizePrice={sp}
+                    mode={addonModes[addon.id] ?? "whole"}
+                    onModeChange={(m) => setAddonModes((prev) => ({ ...prev, [addon.id]: m }))}
+                  />
+                );
+              })}
             </div>
           ))}
 

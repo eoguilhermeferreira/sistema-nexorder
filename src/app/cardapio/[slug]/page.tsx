@@ -50,7 +50,7 @@ const LIGHT_THEME = {
 };
 
 function CardapioContent({ storefront }: { storefront: ReturnType<typeof useStorefront> }) {
-  const { company, categories, products, flavors, addons, flavorSizePrices, prepTimes } = storefront;
+  const { company, categories, products, flavors, addons, flavorSizePrices, addonSizePrices, prepTimes } = storefront;
   const [showCheckout, setShowCheckout] = useState(false);
   const [isLight, setIsLight] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -208,7 +208,7 @@ function CardapioContent({ storefront }: { storefront: ReturnType<typeof useStor
 
       {/* menu */}
       <div className="mt-4 px-4 pb-32">
-        <MenuBrowser categories={categories} products={products} flavors={flavors} addons={addons} flavorSizePrices={flavorSizePrices} />
+        <MenuBrowser categories={categories} products={products} flavors={flavors} addons={addons} flavorSizePrices={flavorSizePrices} addonSizePrices={addonSizePrices} />
       </div>
 
       {/* sticky cart button */}

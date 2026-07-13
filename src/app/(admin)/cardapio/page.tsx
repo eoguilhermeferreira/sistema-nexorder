@@ -368,16 +368,23 @@ function TamanhosSection({ category }: { category: Category }) {
 
 function AdicionaisSection({ companyId, categoryId }: { companyId: string; categoryId: string }) {
   const [addons, setAddons] = useState<Addon[]>([]);
+  const [sizes, setSizes] = useState<CategorySize[]>([]);
   const [name, setName] = useState("");
-  const [price, setPrice] = useState("");
   const [saving, setSaving] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
-  const [editPrice, setEditPrice] = useState("");
+  // per-size price editing
+  const [priceEditId, setPriceEditId] = useState<string | null>(null);
+  const [priceInputs, setPriceInputs] = useState<Record<string, { half: string; whole: string }>>({});
 
   async function load() {
-    const { data } = await (createClient() as any).from("addons").select("*").eq("company_id", companyId).eq("category_id", categoryId).order("name");
-    setAddons((data as Addon[]) ?? []);
+    const supabase = createClient();
+    const [addonsRes, sizesRes] = await Promise.all([
+      (supabase as any).from("addons").select("*").eq("company_id", companyId).eq("category_id", categoryId).order("name"),
+      (supabase as any).from("category_sizes").select("*").eq("category_id", categoryId).order("display_order"),
+    ]);
+    setAddons((addonsRes.data as Addon[]) ?? []);
+    setSizes((sizesRes.data as CategorySize[]) ?? []);
   }
 
   useEffect(() => { load(); }, [categoryId]);
@@ -385,12 +392,12 @@ function AdicionaisSection({ companyId, categoryId }: { companyId: string; categ
   async function addAddon() {
     if (!name.trim()) return;
     setSaving(true);
-    await (createClient() as any).from("addons").insert({ company_id: companyId, category_id: categoryId, name: name.trim(), price: price ? Number(price) : 0, active: true });
-    setName(""); setPrice(""); setSaving(false); load();
+    await (createClient() as any).from("addons").insert({ company_id: companyId, category_id: categoryId, name: name.trim(), price: 0, active: true });
+    setName(""); setSaving(false); load();
   }
 
   async function saveEdit(id: string) {
-    await createClient().from("addons").update({ name: editName.trim(), price: Number(editPrice) }).eq("id", id);
+    await createClient().from("addons").update({ name: editName.trim() }).eq("id", id);
     setEditId(null); load();
   }
 
@@ -399,12 +406,40 @@ function AdicionaisSection({ companyId, categoryId }: { companyId: string; categ
     load();
   }
 
+  async function openPriceEdit(addonId: string) {
+    setEditId(null);
+    setPriceEditId(addonId);
+    const { data } = await (createClient() as any).from("addon_size_prices").select("*").eq("addon_id", addonId);
+    const rows = (data ?? []) as { size_id: string; price_half: number; price_whole: number }[];
+    const inputs: Record<string, { half: string; whole: string }> = {};
+    for (const s of sizes) {
+      const existing = rows.find((r) => r.size_id === s.id);
+      inputs[s.id] = { half: existing ? String(existing.price_half) : "", whole: existing ? String(existing.price_whole) : "" };
+    }
+    setPriceInputs(inputs);
+  }
+
+  async function savePrices() {
+    if (!priceEditId) return;
+    const upserts = sizes
+      .filter((s) => priceInputs[s.id]?.whole !== "" || priceInputs[s.id]?.half !== "")
+      .map((s) => ({
+        addon_id: priceEditId,
+        size_id: s.id,
+        price_half: Number(priceInputs[s.id]?.half || 0),
+        price_whole: Number(priceInputs[s.id]?.whole || 0),
+      }));
+    await (createClient() as any).from("addon_size_prices").upsert(upserts, { onConflict: "addon_id,size_id" });
+    setPriceEditId(null);
+  }
+
+  const hasSizes = sizes.length > 0;
+
   return (
     <div className="rounded-xl border border-border bg-card p-4 space-y-4">
       <h3 className="text-sm font-semibold text-foreground">Adicionais</h3>
       <div className="flex gap-2">
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Borda Catupiry, Bacon extra" className="flex-1 rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground" />
-        <input value={price} onChange={(e) => setPrice(e.target.value)} type="number" min="0" step="0.01" placeholder="Preço" className="w-28 rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground" />
         <button onClick={addAddon} disabled={saving || !name.trim()} className="rounded-lg bg-wine px-4 py-2 text-sm font-medium text-white hover:bg-wine-hover disabled:opacity-50">Adicionar</button>
       </div>
       <div className="space-y-2">
@@ -413,18 +448,49 @@ function AdicionaisSection({ companyId, categoryId }: { companyId: string; categ
             {editId === a.id ? (
               <div className="flex gap-2">
                 <input value={editName} onChange={(e) => setEditName(e.target.value)} className="flex-1 rounded-lg border border-border bg-card px-2 py-1 text-sm text-foreground" />
-                <input value={editPrice} onChange={(e) => setEditPrice(e.target.value)} type="number" className="w-24 rounded-lg border border-border bg-card px-2 py-1 text-sm text-foreground" />
                 <button onClick={() => saveEdit(a.id)} className="rounded-lg bg-wine px-3 py-1 text-xs text-white">Salvar</button>
                 <button onClick={() => setEditId(null)} className="rounded-lg bg-card px-3 py-1 text-xs text-muted">Cancelar</button>
               </div>
+            ) : priceEditId === a.id ? (
+              <div className="space-y-3">
+                <p className="text-sm font-semibold text-foreground">{a.name} — Preços por tamanho</p>
+                {!hasSizes ? (
+                  <p className="text-xs text-muted">Cadastre tamanhos primeiro na seção acima.</p>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-3 gap-2 text-xs font-medium text-muted mb-1">
+                      <span>Tamanho</span><span>Metade (R$)</span><span>Inteira (R$)</span>
+                    </div>
+                    {sizes.map((s) => (
+                      <div key={s.id} className="grid grid-cols-3 gap-2 items-center">
+                        <span className="text-sm text-foreground">{s.name}</span>
+                        <input
+                          value={priceInputs[s.id]?.half ?? ""}
+                          onChange={(e) => setPriceInputs((prev) => ({ ...prev, [s.id]: { ...prev[s.id], half: e.target.value } }))}
+                          type="number" min="0" step="0.01" placeholder="R$"
+                          className="rounded-lg border border-border bg-card px-2 py-1.5 text-sm text-foreground"
+                        />
+                        <input
+                          value={priceInputs[s.id]?.whole ?? ""}
+                          onChange={(e) => setPriceInputs((prev) => ({ ...prev, [s.id]: { ...prev[s.id], whole: e.target.value } }))}
+                          type="number" min="0" step="0.01" placeholder="R$"
+                          className="rounded-lg border border-border bg-card px-2 py-1.5 text-sm text-foreground"
+                        />
+                      </div>
+                    ))}
+                  </>
+                )}
+                <div className="flex gap-2">
+                  <button onClick={savePrices} className="rounded-lg bg-wine px-3 py-1.5 text-xs font-medium text-white">Salvar preços</button>
+                  <button onClick={() => setPriceEditId(null)} className="rounded-lg bg-card px-3 py-1.5 text-xs text-muted">Cancelar</button>
+                </div>
+              </div>
             ) : (
               <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-sm text-foreground">{a.name}</span>
-                  {a.price > 0 && <span className="ml-3 text-sm text-muted">+{formatCurrency(a.price)}</span>}
-                </div>
+                <span className="text-sm text-foreground">{a.name}</span>
                 <div className="flex gap-2">
-                  <button onClick={() => { setEditId(a.id); setEditName(a.name); setEditPrice(String(a.price)); }} className="text-xs text-muted hover:text-foreground">Editar</button>
+                  <button onClick={() => { setEditId(a.id); setEditName(a.name); }} className="text-xs text-muted hover:text-foreground">Editar</button>
+                  {hasSizes && <button onClick={() => openPriceEdit(a.id)} className="text-xs text-wine hover:underline">Preços</button>}
                   <button onClick={() => deleteAddon(a.id)} className="text-xs text-red-400">Apagar</button>
                 </div>
               </div>

@@ -126,11 +126,20 @@ export interface Addon {
   active: boolean;
 }
 
+export interface AddonSizePrice {
+  id: string;
+  addon_id: string;
+  size_id: string;
+  price_half: number;
+  price_whole: number;
+}
+
 export interface AddonSelection {
   id: string;
   name: string;
   price: number;
   qty: number;
+  mode?: "half" | "whole" | null;
   flavor_name?: string | null;
 }
 

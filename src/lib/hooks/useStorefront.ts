@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
-import type { Category, Product, Flavor, Addon, CompanySettings, BusinessHours, FlavorSizePrice } from "@/types/domain";
+import type { Category, Product, Flavor, Addon, CompanySettings, BusinessHours, FlavorSizePrice, AddonSizePrice } from "@/types/domain";
 
 export interface StorefrontCompany {
   id: string;
@@ -40,6 +40,7 @@ export function useStorefront(slug: string) {
   const [flavors, setFlavors] = useState<Flavor[]>([]);
   const [addons, setAddons] = useState<Addon[]>([]);
   const [flavorSizePrices, setFlavorSizePrices] = useState<FlavorSizePrice[]>([]);
+  const [addonSizePrices, setAddonSizePrices] = useState<AddonSizePrice[]>([]);
   const [settings, setSettings] = useState<CompanySettings | null>(null);
   const [businessHours, setBusinessHours] = useState<BusinessHours[]>([]);
   const [prepTimes, setPrepTimes] = useState<StorefrontPrepTimes | null>(null);
@@ -64,7 +65,7 @@ export function useStorefront(slug: string) {
     setCompany(companyRow);
 
     const companyId = companyRow.id;
-    const [categoriesRes, productsRes, flavorsRes, addonsRes, flavorPricesRes, settingsRes, hoursRes, prepTimesRes] =
+    const [categoriesRes, productsRes, flavorsRes, addonsRes, flavorPricesRes, addonPricesRes, settingsRes, hoursRes, prepTimesRes] =
       await Promise.all([
         supabase.from("categories").select("*").eq("company_id", companyId).eq("active", true).order("display_order"),
         supabase
@@ -76,6 +77,7 @@ export function useStorefront(slug: string) {
         supabase.from("flavors").select("*").eq("company_id", companyId).eq("available", true).order("name"),
         supabase.from("addons").select("*").eq("company_id", companyId).eq("active", true).order("name"),
         (supabase as any).from("flavor_size_prices").select("*"),
+        (supabase as any).from("addon_size_prices").select("*"),
         supabase.from("company_settings").select("*").eq("company_id", companyId).single(),
         supabase.from("business_hours").select("*").eq("company_id", companyId).order("weekday"),
         (supabase as any).from("prep_times").select("delivery_minutes, pickup_minutes, table_minutes").eq("company_id", companyId).single(),
@@ -86,6 +88,7 @@ export function useStorefront(slug: string) {
     setFlavors((flavorsRes.data as unknown as Flavor[]) ?? []);
     setAddons((addonsRes.data as unknown as Addon[]) ?? []);
     setFlavorSizePrices((flavorPricesRes.data as unknown as FlavorSizePrice[]) ?? []);
+    setAddonSizePrices((addonPricesRes.data as unknown as AddonSizePrice[]) ?? []);
     setSettings((settingsRes.data as unknown as CompanySettings) ?? null);
     setBusinessHours((hoursRes.data as unknown as BusinessHours[]) ?? []);
     setPrepTimes((prepTimesRes.data as StorefrontPrepTimes) ?? null);
@@ -96,5 +99,5 @@ export function useStorefront(slug: string) {
     fetchAll();
   }, [fetchAll]);
 
-  return { company, categories, products, flavors, addons, flavorSizePrices, settings, businessHours, prepTimes, loading, notFound, refetch: fetchAll };
+  return { company, categories, products, flavors, addons, flavorSizePrices, addonSizePrices, settings, businessHours, prepTimes, loading, notFound, refetch: fetchAll };
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { Category, CategorySize, Product, Flavor, Addon, FlavorSizePrice } from "@/types/domain";
+import type { Category, CategorySize, Product, Flavor, Addon, FlavorSizePrice, AddonSizePrice } from "@/types/domain";
 import { formatCurrency } from "@/lib/format";
 import { ProductConfigurator } from "./ProductConfigurator";
 import { useCart } from "@/contexts/CartContext";
@@ -13,12 +13,14 @@ export function MenuBrowser({
   flavors,
   addons,
   flavorSizePrices = [],
+  addonSizePrices = [],
 }: {
   categories: Category[];
   products: Product[];
   flavors: Flavor[];
   addons: Addon[];
   flavorSizePrices?: FlavorSizePrice[];
+  addonSizePrices?: AddonSizePrice[];
 }) {
   const [activeProduct, setActiveProduct] = useState<{ product: Product; categoryName: string } | null>(null);
   const [activeCatId, setActiveCatId] = useState<string | null>(null);
@@ -118,6 +120,7 @@ export function MenuBrowser({
           categoryName={activeProduct.categoryName}
           flavors={flavors}
           addons={addons}
+          addonSizePrices={addonSizePrices}
           onClose={() => setActiveProduct(null)}
         />
       )}
