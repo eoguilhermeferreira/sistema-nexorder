@@ -162,26 +162,28 @@ function PizzaSection({
   const isPerFlavor = category.pricing_mode === "per_flavor";
   const selectedSize = sizes.find((s) => s.id === selectedSizeId);
 
-  // sweet surcharge: sum of sweet_surcharge of selected sweet flavors
+  // sweet surcharge: sum of flavor_size_prices for selected sweet flavors on the current size
   function getSweetSurcharge(): number {
+    if (!selectedSize) return 0;
     return selectedFlavorIds.reduce((sum, fid) => {
       const f = flavors.find((x) => x.id === fid);
-      return sum + (f?.is_sweet ? (f.sweet_surcharge ?? 0) : 0);
+      if (!f?.is_sweet) return sum;
+      const fp = flavorSizePrices.find((p) => p.flavor_id === fid && p.size_id === selectedSize.id);
+      return sum + (fp?.price ?? 0);
     }, 0);
   }
 
-  // for per_flavor mode: highest price among selected flavors for the selected size + sweet surcharge
+  // base price: size price + sweet surcharges; for per_flavor mode: max of flavor prices + sweet surcharges
   function getFlavorBasePrice(): number {
     if (!selectedSize) return 0;
     const sweetExtra = getSweetSurcharge();
     if (!isPerFlavor) return selectedSize.price + sweetExtra;
     if (selectedFlavorIds.length === 0) return 0;
-    return Math.max(
-      ...selectedFlavorIds.map((fid) => {
-        const fp = flavorSizePrices.find((p) => p.flavor_id === fid && p.size_id === selectedSize.id);
-        return fp?.price ?? 0;
-      })
-    ) + sweetExtra;
+    const savoryIds = selectedFlavorIds.filter((fid) => !flavors.find((f) => f.id === fid)?.is_sweet);
+    const maxSavory = savoryIds.length > 0
+      ? Math.max(...savoryIds.map((fid) => flavorSizePrices.find((p) => p.flavor_id === fid && p.size_id === selectedSize.id)?.price ?? 0))
+      : selectedSize.price;
+    return maxSavory + sweetExtra;
   }
   const maxFlavors = selectedSize?.max_flavors ?? 1;
 
@@ -399,9 +401,10 @@ function PizzaSection({
                     {flavorPrice != null && (
                       <span className="text-xs font-semibold text-wine">{formatCurrency(flavorPrice)}</span>
                     )}
-                    {flavor.is_sweet && flavor.sweet_surcharge > 0 && (
-                      <span className="text-xs font-semibold text-pink-400">+{formatCurrency(flavor.sweet_surcharge)}</span>
-                    )}
+                    {flavor.is_sweet && selectedSize && (() => {
+                      const fp = flavorSizePrices.find((p) => p.flavor_id === flavor.id && p.size_id === selectedSize.id);
+                      return fp?.price ? <span className="text-xs font-semibold text-pink-400">+{formatCurrency(fp.price)}</span> : null;
+                    })()}
                   </div>
                   {ingredients && (
                     <p className="mt-0.5 text-xs leading-relaxed text-muted">{ingredients}</p>

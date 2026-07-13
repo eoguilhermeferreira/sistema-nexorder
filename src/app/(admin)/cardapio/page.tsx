@@ -728,15 +728,6 @@ function ProdutosTab({ companyId }: { companyId: string }) {
                 >
                   🍫 Doce
                 </button>
-                {isSweet && (
-                  <input
-                    value={sweetSurcharge}
-                    onChange={(e) => setSweetSurcharge(e.target.value)}
-                    type="number" min="0" step="0.01"
-                    placeholder="Acréscimo R$"
-                    className="ml-2 w-36 rounded-lg border border-border bg-card-hover px-3 py-1.5 text-sm text-foreground"
-                  />
-                )}
               </div>
             )}
             {!isPizza && (
@@ -823,9 +814,7 @@ function ProdutosTab({ companyId }: { companyId: string }) {
                       </div>
                       <div className="flex shrink-0 gap-2">
                         <button onClick={() => startEdit(item)} className="text-xs text-muted hover:text-foreground">Editar</button>
-                        {isPerFlavor && (
-                          <button onClick={() => openPriceEdit(item.id)} className="text-xs text-wine hover:underline">Preços</button>
-                        )}
+                        <button onClick={() => openPriceEdit(item.id)} className="text-xs text-wine hover:underline">Preços</button>
                         <button onClick={() => deleteItem(item.id)} className="text-xs text-red-400">Apagar</button>
                       </div>
                     </div>
