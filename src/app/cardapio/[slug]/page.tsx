@@ -171,9 +171,11 @@ function CardapioContent({ storefront }: { storefront: ReturnType<typeof useStor
               </a>
             )}
             {company.business_hours_text && (
-              <p className="min-w-0 flex-1 text-xs text-muted leading-snug line-clamp-2">
-                🕐 {company.business_hours_text}
-              </p>
+              <div className="min-w-0 flex-1 text-xs text-muted leading-snug">
+                {company.business_hours_text.split("|").map((line, i) => (
+                  <p key={i}>{i === 0 ? `🕐 ${line.trim()}` : <>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{line.trim()}</>}</p>
+                ))}
+              </div>
             )}
           </div>
         )}
