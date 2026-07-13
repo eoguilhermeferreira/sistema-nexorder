@@ -100,9 +100,23 @@ function CardapioContent({ storefront }: { storefront: ReturnType<typeof useStor
             <h1 className="truncate text-lg font-bold text-foreground leading-tight">
               {company.fantasy_name ?? company.name}
             </h1>
-            <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${company.is_open ? "bg-green-500/10 text-green-600" : "bg-red-500/10 text-red-500"}`}>
-              {company.is_open ? "Aberto agora" : "Fechado"}
-            </span>
+            <div className="mt-0.5 flex items-center gap-2 flex-wrap">
+              <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${company.is_open ? "bg-green-500/10 text-green-600" : "bg-red-500/10 text-red-500"}`}>
+                {company.is_open ? "Aberto agora" : "Fechado"}
+              </span>
+              {company.business_hours_text && (
+                <span className="text-xs font-semibold uppercase tracking-wide text-muted">
+                  Horário de funcionamento
+                </span>
+              )}
+            </div>
+            {company.business_hours_text && (
+              <div className="mt-1 text-xs text-muted leading-5">
+                {company.business_hours_text.split("|").map((line, i) => (
+                  <p key={i}>{line.trim()}</p>
+                ))}
+              </div>
+            )}
           </div>
           <button
             onClick={toggleTheme}
@@ -116,9 +130,9 @@ function CardapioContent({ storefront }: { storefront: ReturnType<typeof useStor
           <p className="mt-3 text-sm leading-relaxed text-muted">{company.description}</p>
         )}
 
-        {/* redes sociais + horário de funcionamento na mesma linha */}
-        {(company.instagram || company.facebook || company.website || company.business_hours_text) && (
-          <div className="mt-3 flex items-start gap-2">
+        {/* redes sociais */}
+        {(company.instagram || company.facebook || company.website) && (
+          <div className="mt-3 flex items-center gap-2">
             {company.instagram && (
               <a
                 href={company.instagram.startsWith("http") ? company.instagram : `https://instagram.com/${company.instagram.replace("@", "")}`}
@@ -169,15 +183,6 @@ function CardapioContent({ storefront }: { storefront: ReturnType<typeof useStor
                   <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
                 </svg>
               </a>
-            )}
-            {company.business_hours_text && (
-              <div className="min-w-0 flex-1 text-xs text-muted">
-                {company.business_hours_text.split("|").map((line, i) => (
-                  <p key={i} className="leading-5">
-                    {i === 0 ? "🕐 " : "     "}{line.trim()}
-                  </p>
-                ))}
-              </div>
             )}
           </div>
         )}
