@@ -207,6 +207,11 @@ function BundleConfigurator({
   const currentFlavors = flavorsByPizza[step] ?? [];
   const canAdvance = currentFlavors.length > 0;
 
+  function advanceStep() {
+    setExpandedFlavorId(null);
+    setStep((s) => s + 1);
+  }
+
   function toggleFlavor(id: string) {
     setFlavorsByPizza((prev) => {
       const updated = prev.map((arr, i) => {
@@ -216,8 +221,14 @@ function BundleConfigurator({
           return arr.filter((f) => f !== id);
         }
         if (arr.length >= maxFlavorsPerPizza) return arr;
-        setExpandedFlavorId(id);
-        return [...arr, id];
+        const next = [...arr, id];
+        // auto-advance when max flavors reached
+        if (next.length >= maxFlavorsPerPizza) {
+          setTimeout(() => advanceStep(), 350);
+        } else {
+          setExpandedFlavorId(id);
+        }
+        return next;
       });
       return updated;
     });
@@ -225,8 +236,7 @@ function BundleConfigurator({
 
   function advance() {
     if (!canAdvance) return;
-    setExpandedFlavorId(null);
-    setStep((s) => s + 1);
+    advanceStep();
   }
 
   function goBack() {
@@ -360,23 +370,42 @@ function BundleConfigurator({
         {/* sticky footer */}
         <div className="shrink-0 border-t border-border bg-card px-5 py-4">
           {!isDone ? (
-            <div className="flex items-center gap-3">
-              {step > 0 && (
+            <div>
+              {/* Manual-advance button: only shown when ≥1 flavor selected but below max */}
+              {canAdvance && currentFlavors.length < maxFlavorsPerPizza && (
+                <div className="flex items-center gap-3">
+                  {step > 0 && (
+                    <button
+                      type="button"
+                      onClick={goBack}
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-card-hover text-muted"
+                    >
+                      ←
+                    </button>
+                  )}
+                  <button
+                    onClick={advance}
+                    className="flex-1 rounded-xl bg-wine px-4 py-2.5 text-sm font-semibold text-white hover:bg-wine-hover"
+                  >
+                    Confirmar Pizza {step + 1}
+                  </button>
+                </div>
+              )}
+              {/* Back button only (when no flavor selected but not first step) */}
+              {!canAdvance && step > 0 && (
                 <button
                   type="button"
                   onClick={goBack}
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-card-hover text-muted"
+                  className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card-hover text-muted"
                 >
                   ←
                 </button>
               )}
-              <button
-                onClick={advance}
-                disabled={!canAdvance}
-                className="flex-1 rounded-xl bg-wine px-4 py-2.5 text-sm font-semibold text-white hover:bg-wine-hover disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                {step < pizzaCount - 1 ? `Confirmar Pizza ${step + 1}` : `Confirmar Pizza ${step + 1}`}
-              </button>
+              {!canAdvance && (
+                <p className="mt-2 text-center text-xs text-muted">
+                  Selecione pelo menos um sabor para continuar
+                </p>
+              )}
             </div>
           ) : (
             <div className="flex items-center gap-3">
