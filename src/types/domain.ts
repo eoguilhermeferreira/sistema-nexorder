@@ -14,6 +14,7 @@ export type TableStatus = "livre" | "ocupada" | "encerrada";
 export interface OrderItemFlavor {
   flavor_id: string;
   name: string;
+  pizza_index?: number;
 }
 
 export interface OrderItem {
@@ -154,6 +155,9 @@ export interface Product {
   base_price: number;
   active: boolean;
   created_at: string | null;
+  bundle_pizza_count: number;
+  bundle_max_flavors: number;
+  bundle_flavor_category_id: string | null;
   product_sizes?: ProductSize[];
   product_flavors?: { flavor_id: string }[];
 }

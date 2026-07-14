@@ -172,9 +172,300 @@ function AddonRow({
   );
 }
 
+// ─── bundle configurator ───────────────────────────────────────────────────────
+
+function BundleConfigurator({
+  product,
+  categoryName,
+  flavors,
+  onClose,
+}: {
+  product: Product;
+  categoryName?: string;
+  flavors: Flavor[];
+  onClose: () => void;
+}) {
+  const { addItem } = useCart();
+  const pizzaCount = product.bundle_pizza_count ?? 2;
+  const maxFlavorsPerPizza = product.bundle_max_flavors ?? 2;
+
+  // flavors for this bundle (from bundle_flavor_category_id)
+  const bundleFlavors = useMemo(
+    () => flavors.filter((f) => f.category_id === product.bundle_flavor_category_id),
+    [flavors, product.bundle_flavor_category_id]
+  );
+
+  // per-pizza state
+  const [step, setStep] = useState(0); // 0..pizzaCount-1 = picking flavors; pizzaCount = done
+  const [flavorsByPizza, setFlavorsByPizza] = useState<string[][]>(
+    () => Array.from({ length: pizzaCount }, () => [])
+  );
+  const [expandedFlavorId, setExpandedFlavorId] = useState<string | null>(null);
+  const [quantity, setQuantity] = useState(1);
+
+  const isDone = step >= pizzaCount;
+  const currentFlavors = flavorsByPizza[step] ?? [];
+  const canAdvance = currentFlavors.length > 0;
+
+  function toggleFlavor(id: string) {
+    setFlavorsByPizza((prev) => {
+      const updated = prev.map((arr, i) => {
+        if (i !== step) return arr;
+        if (arr.includes(id)) {
+          setExpandedFlavorId((e) => (e === id ? null : e));
+          return arr.filter((f) => f !== id);
+        }
+        if (arr.length >= maxFlavorsPerPizza) return arr;
+        setExpandedFlavorId(id);
+        return [...arr, id];
+      });
+      return updated;
+    });
+  }
+
+  function advance() {
+    if (!canAdvance) return;
+    setExpandedFlavorId(null);
+    setStep((s) => s + 1);
+  }
+
+  function goBack() {
+    setExpandedFlavorId(null);
+    setStep((s) => Math.max(0, s - 1));
+  }
+
+  function confirm() {
+    const allFlavors: import("@/types/domain").OrderItemFlavor[] = [];
+    for (let pi = 0; pi < pizzaCount; pi++) {
+      for (const fid of flavorsByPizza[pi]) {
+        const f = bundleFlavors.find((x) => x.id === fid);
+        if (f) allFlavors.push({ flavor_id: f.id, name: f.name, pizza_index: pi });
+      }
+    }
+    addItem({
+      product_name: product.name,
+      category_name: categoryName ?? null,
+      quantity,
+      size_id: null,
+      size_name: null,
+      flavors: allFlavors,
+      border_id: null,
+      border_name: null,
+      border_price: null,
+      additions: null,
+      removed_ingredients: null,
+      notes: null,
+      price: product.base_price,
+    });
+    onClose();
+  }
+
+  // ── render ──
+
+  // summary of confirmed pizzas (shown at top when on step > 0)
+  const confirmedSummary = flavorsByPizza.slice(0, step).map((ids, pi) => {
+    const names = ids.map((id) => bundleFlavors.find((f) => f.id === id)?.name ?? "").filter(Boolean);
+    return { pizzaNum: pi + 1, names };
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 sm:items-center" onClick={onClose}>
+      <div
+        className="flex max-h-[92dvh] w-full max-w-lg flex-col rounded-t-3xl bg-background sm:rounded-2xl"
+        onClick={(e) => e.stopPropagation()}
+        style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+      >
+        {/* drag handle */}
+        <div className="flex shrink-0 justify-center pt-3 pb-1">
+          <div className="h-1 w-10 rounded-full bg-border" />
+        </div>
+
+        {/* header */}
+        <div className="flex shrink-0 items-start justify-between border-b border-border bg-card px-5 py-3">
+          <div>
+            <h2 className="text-base font-semibold text-foreground">{product.name}</h2>
+            {product.description && <p className="mt-0.5 text-sm text-muted">{product.description}</p>}
+          </div>
+          <button onClick={onClose} className="ml-4 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-card-hover text-muted">✕</button>
+        </div>
+
+        {/* progress dots */}
+        <div className="shrink-0 flex items-center justify-center gap-2 py-3 bg-card border-b border-border">
+          {Array.from({ length: pizzaCount }).map((_, i) => (
+            <div
+              key={i}
+              className={`h-2 rounded-full transition-all ${
+                i < step ? "w-6 bg-wine" : i === step && !isDone ? "w-6 bg-wine/60" : "w-2 bg-border"
+              }`}
+            />
+          ))}
+        </div>
+
+        {/* scrollable body */}
+        <div className="flex-1 overflow-y-auto">
+
+          {/* confirmed pizzas summary */}
+          {confirmedSummary.length > 0 && (
+            <div className="px-4 py-3 space-y-1 border-b border-border bg-card-hover">
+              {confirmedSummary.map(({ pizzaNum, names }) => (
+                <p key={pizzaNum} className="text-xs text-muted">
+                  <span className="font-semibold text-foreground">Pizza {pizzaNum}:</span>{" "}
+                  {names.join(" + ")}
+                </p>
+              ))}
+            </div>
+          )}
+
+          {!isDone ? (
+            <>
+              <SectionHeader
+                title={`Pizza ${step + 1} de ${pizzaCount}`}
+                subtitle={`${currentFlavors.length} de ${maxFlavorsPerPizza} sabor(es) selecionado(s)`}
+                required
+              />
+              {bundleFlavors.map((flavor) => (
+                <FlavorCard
+                  key={flavor.id}
+                  flavor={flavor}
+                  selected={currentFlavors.includes(flavor.id)}
+                  disabled={currentFlavors.length >= maxFlavorsPerPizza && !currentFlavors.includes(flavor.id)}
+                  onToggle={() => toggleFlavor(flavor.id)}
+                  expanded={expandedFlavorId === flavor.id}
+                  onExpandToggle={() => setExpandedFlavorId((e) => (e === flavor.id ? null : flavor.id))}
+                  removedIngredients={[]}
+                  onToggleIngredient={() => {}}
+                />
+              ))}
+            </>
+          ) : (
+            <div className="px-5 py-6 text-center">
+              <p className="text-4xl mb-3">🍕</p>
+              <p className="text-base font-semibold text-foreground">Pronto!</p>
+              <p className="mt-1 text-sm text-muted">Confira seu pedido e adicione ao carrinho.</p>
+              <div className="mt-4 space-y-2 text-left">
+                {flavorsByPizza.map((ids, pi) => {
+                  const names = ids.map((id) => bundleFlavors.find((f) => f.id === id)?.name ?? "").filter(Boolean);
+                  return (
+                    <div key={pi} className="rounded-xl border border-border bg-card px-4 py-3">
+                      <p className="text-xs font-semibold text-muted uppercase tracking-wide">Pizza {pi + 1}</p>
+                      <p className="mt-1 text-sm font-medium text-foreground">{names.join(" + ")}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* sticky footer */}
+        <div className="shrink-0 border-t border-border bg-card px-5 py-4">
+          {!isDone ? (
+            <div className="flex items-center gap-3">
+              {step > 0 && (
+                <button
+                  type="button"
+                  onClick={goBack}
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-card-hover text-muted"
+                >
+                  ←
+                </button>
+              )}
+              <button
+                onClick={advance}
+                disabled={!canAdvance}
+                className="flex-1 rounded-xl bg-wine px-4 py-2.5 text-sm font-semibold text-white hover:bg-wine-hover disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {step < pizzaCount - 1 ? `Confirmar Pizza ${step + 1}` : `Confirmar Pizza ${step + 1}`}
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={goBack}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-card-hover text-muted"
+              >
+                ←
+              </button>
+              <div className="flex flex-1 items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                    className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card-hover text-foreground hover:bg-border"
+                  >
+                    −
+                  </button>
+                  <span className="w-6 text-center text-sm font-semibold text-foreground">{quantity}</span>
+                  <button
+                    type="button"
+                    onClick={() => setQuantity((q) => q + 1)}
+                    className="flex h-9 w-9 items-center justify-center rounded-full border border-wine bg-wine/10 text-wine hover:bg-wine/20"
+                  >
+                    +
+                  </button>
+                </div>
+                <button
+                  onClick={confirm}
+                  className="flex-1 rounded-xl bg-wine px-4 py-2.5 text-sm font-semibold text-white hover:bg-wine-hover"
+                >
+                  Adicionar · {formatCurrency(product.base_price * quantity)}
+                </button>
+              </div>
+            </div>
+          )}
+          {!isDone && !canAdvance && (
+            <p className="mt-2 text-center text-xs text-muted">Selecione pelo menos um sabor para continuar</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── main component ────────────────────────────────────────────────────────────
 
 export function ProductConfigurator({
+  product,
+  categoryName,
+  flavors,
+  addons,
+  addonSizePrices = [],
+  onClose,
+}: {
+  product: Product;
+  categoryName?: string;
+  flavors: Flavor[];
+  addons: Addon[];
+  addonSizePrices?: AddonSizePrice[];
+  onClose: () => void;
+}) {
+  const isBundle = !!product.bundle_flavor_category_id;
+
+  if (isBundle) {
+    return (
+      <BundleConfigurator
+        product={product}
+        categoryName={categoryName}
+        flavors={flavors}
+        onClose={onClose}
+      />
+    );
+  }
+
+  return (
+    <RegularConfigurator
+      product={product}
+      categoryName={categoryName}
+      flavors={flavors}
+      addons={addons}
+      addonSizePrices={addonSizePrices}
+      onClose={onClose}
+    />
+  );
+}
+
+function RegularConfigurator({
   product,
   categoryName,
   flavors,
