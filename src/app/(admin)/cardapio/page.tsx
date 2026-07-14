@@ -370,9 +370,11 @@ function AdicionaisSection({ companyId, categoryId }: { companyId: string; categ
   const [addons, setAddons] = useState<Addon[]>([]);
   const [sizes, setSizes] = useState<CategorySize[]>([]);
   const [name, setName] = useState("");
+  const [price, setPrice] = useState("");
   const [saving, setSaving] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
+  const [editPrice, setEditPrice] = useState("");
   // per-size price editing
   const [priceEditId, setPriceEditId] = useState<string | null>(null);
   const [priceInputs, setPriceInputs] = useState<Record<string, { half: string; whole: string }>>({});
@@ -392,12 +394,12 @@ function AdicionaisSection({ companyId, categoryId }: { companyId: string; categ
   async function addAddon() {
     if (!name.trim()) return;
     setSaving(true);
-    await (createClient() as any).from("addons").insert({ company_id: companyId, category_id: categoryId, name: name.trim(), price: 0, active: true });
-    setName(""); setSaving(false); load();
+    await (createClient() as any).from("addons").insert({ company_id: companyId, category_id: categoryId, name: name.trim(), price: price ? Number(price) : 0, active: true });
+    setName(""); setPrice(""); setSaving(false); load();
   }
 
   async function saveEdit(id: string) {
-    await createClient().from("addons").update({ name: editName.trim() }).eq("id", id);
+    await (createClient() as any).from("addons").update({ name: editName.trim(), price: editPrice ? Number(editPrice) : 0 }).eq("id", id);
     setEditId(null); load();
   }
 
@@ -439,17 +441,21 @@ function AdicionaisSection({ companyId, categoryId }: { companyId: string; categ
     <div className="rounded-xl border border-border bg-card p-4 space-y-4">
       <h3 className="text-sm font-semibold text-foreground">Adicionais</h3>
       <div className="flex gap-2">
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Borda Catupiry, Bacon extra" className="flex-1 rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground" />
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Bacon extra, Queijo duplo" className="flex-1 rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground" />
+        <input value={price} onChange={(e) => setPrice(e.target.value)} type="number" min="0" step="0.01" placeholder="R$" className="w-24 rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground" />
         <button onClick={addAddon} disabled={saving || !name.trim()} className="rounded-lg bg-wine px-4 py-2 text-sm font-medium text-white hover:bg-wine-hover disabled:opacity-50">Adicionar</button>
       </div>
       <div className="space-y-2">
         {addons.map((a) => (
           <div key={a.id} className="rounded-lg border border-border bg-card-hover p-3">
             {editId === a.id ? (
-              <div className="flex gap-2">
-                <input value={editName} onChange={(e) => setEditName(e.target.value)} className="flex-1 rounded-lg border border-border bg-card px-2 py-1 text-sm text-foreground" />
-                <button onClick={() => saveEdit(a.id)} className="rounded-lg bg-wine px-3 py-1 text-xs text-white">Salvar</button>
-                <button onClick={() => setEditId(null)} className="rounded-lg bg-card px-3 py-1 text-xs text-muted">Cancelar</button>
+              <div className="space-y-2">
+                <input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Nome" className="w-full rounded-lg border border-border bg-card px-2 py-1.5 text-sm text-foreground" />
+                <input value={editPrice} onChange={(e) => setEditPrice(e.target.value)} type="number" min="0" step="0.01" placeholder="Preço (R$)" className="w-full rounded-lg border border-border bg-card px-2 py-1.5 text-sm text-foreground" />
+                <div className="flex gap-2">
+                  <button onClick={() => saveEdit(a.id)} className="rounded-lg bg-wine px-3 py-1 text-xs text-white">Salvar</button>
+                  <button onClick={() => setEditId(null)} className="rounded-lg bg-card px-3 py-1 text-xs text-muted">Cancelar</button>
+                </div>
               </div>
             ) : priceEditId === a.id ? (
               <div className="space-y-3">
@@ -487,10 +493,13 @@ function AdicionaisSection({ companyId, categoryId }: { companyId: string; categ
               </div>
             ) : (
               <div className="flex items-center justify-between">
-                <span className="text-sm text-foreground">{a.name}</span>
+                <div>
+                  <span className="text-sm text-foreground">{a.name}</span>
+                  {a.price > 0 && <span className="ml-2 text-xs font-semibold text-wine">+{formatCurrency(a.price)}</span>}
+                </div>
                 <div className="flex gap-2">
-                  <button onClick={() => { setEditId(a.id); setEditName(a.name); }} className="text-xs text-muted hover:text-foreground">Editar</button>
-                  {hasSizes && <button onClick={() => openPriceEdit(a.id)} className="text-xs text-wine hover:underline">Preços</button>}
+                  <button onClick={() => { setEditId(a.id); setEditName(a.name); setEditPrice(a.price > 0 ? String(a.price) : ""); }} className="text-xs text-muted hover:text-foreground">Editar</button>
+                  {hasSizes && <button onClick={() => openPriceEdit(a.id)} className="text-xs text-wine hover:underline">Preços por tamanho</button>}
                   <button onClick={() => deleteAddon(a.id)} className="text-xs text-red-400">Apagar</button>
                 </div>
               </div>
