@@ -188,6 +188,7 @@ function BundleConfigurator({
   const { addItem } = useCart();
   const pizzaCount = product.bundle_pizza_count ?? 2;
   const maxFlavorsPerPizza = product.bundle_max_flavors ?? 2;
+  const totalFlavors = pizzaCount * maxFlavorsPerPizza;
 
   // flavors for this bundle (from bundle_flavor_category_id)
   const bundleFlavors = useMemo(
@@ -195,63 +196,30 @@ function BundleConfigurator({
     [flavors, product.bundle_flavor_category_id]
   );
 
-  // per-pizza state
-  const [step, setStep] = useState(0); // 0..pizzaCount-1 = picking flavors; pizzaCount = done
-  const [flavorsByPizza, setFlavorsByPizza] = useState<string[][]>(
-    () => Array.from({ length: pizzaCount }, () => [])
-  );
-  const [expandedFlavorId, setExpandedFlavorId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [quantity, setQuantity] = useState(1);
 
-  const isDone = step >= pizzaCount;
-  const currentFlavors = flavorsByPizza[step] ?? [];
-  const canAdvance = currentFlavors.length > 0;
-
-  function advanceStep() {
-    setExpandedFlavorId(null);
-    setStep((s) => s + 1);
-  }
+  const canConfirm = selectedIds.length > 0;
 
   function toggleFlavor(id: string) {
-    setFlavorsByPizza((prev) => {
-      const updated = prev.map((arr, i) => {
-        if (i !== step) return arr;
-        if (arr.includes(id)) {
-          setExpandedFlavorId((e) => (e === id ? null : e));
-          return arr.filter((f) => f !== id);
-        }
-        if (arr.length >= maxFlavorsPerPizza) return arr;
-        const next = [...arr, id];
-        // auto-advance when max flavors reached
-        if (next.length >= maxFlavorsPerPizza) {
-          setTimeout(() => advanceStep(), 350);
-        } else {
-          setExpandedFlavorId(id);
-        }
-        return next;
-      });
-      return updated;
+    setSelectedIds((prev) => {
+      if (prev.includes(id)) return prev.filter((f) => f !== id);
+      if (prev.length >= totalFlavors) return prev;
+      return [...prev, id];
     });
   }
 
-  function advance() {
-    if (!canAdvance) return;
-    advanceStep();
-  }
-
-  function goBack() {
-    setExpandedFlavorId(null);
-    setStep((s) => Math.max(0, s - 1));
+  // Build pizza assignment label for a flavor index
+  function pizzaLabel(index: number): string {
+    const pi = Math.floor(index / maxFlavorsPerPizza);
+    return `Pizza ${pi + 1}`;
   }
 
   function confirm() {
-    const allFlavors: import("@/types/domain").OrderItemFlavor[] = [];
-    for (let pi = 0; pi < pizzaCount; pi++) {
-      for (const fid of flavorsByPizza[pi]) {
-        const f = bundleFlavors.find((x) => x.id === fid);
-        if (f) allFlavors.push({ flavor_id: f.id, name: f.name, pizza_index: pi });
-      }
-    }
+    const allFlavors: import("@/types/domain").OrderItemFlavor[] = selectedIds.map((fid, idx) => {
+      const f = bundleFlavors.find((x) => x.id === fid)!;
+      return { flavor_id: f.id, name: f.name, pizza_index: Math.floor(idx / maxFlavorsPerPizza) };
+    });
     addItem({
       product_name: product.name,
       category_name: categoryName ?? null,
@@ -270,13 +238,14 @@ function BundleConfigurator({
     onClose();
   }
 
-  // ── render ──
-
-  // summary of confirmed pizzas (shown at top when on step > 0)
-  const confirmedSummary = flavorsByPizza.slice(0, step).map((ids, pi) => {
-    const names = ids.map((id) => bundleFlavors.find((f) => f.id === id)?.name ?? "").filter(Boolean);
-    return { pizzaNum: pi + 1, names };
-  });
+  // Build the ordering rule hint text
+  const hints: string[] = [];
+  for (let pi = 0; pi < pizzaCount; pi++) {
+    const start = pi * maxFlavorsPerPizza + 1;
+    const end = (pi + 1) * maxFlavorsPerPizza;
+    const range = start === end ? `${start}º sabor` : `${start}º ao ${end}º sabor`;
+    hints.push(`${range} → Pizza ${pi + 1}`);
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 sm:items-center" onClick={onClose}>
@@ -299,151 +268,96 @@ function BundleConfigurator({
           <button onClick={onClose} className="ml-4 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-card-hover text-muted">✕</button>
         </div>
 
-        {/* progress dots */}
-        <div className="shrink-0 flex items-center justify-center gap-2 py-3 bg-card border-b border-border">
-          {Array.from({ length: pizzaCount }).map((_, i) => (
-            <div
-              key={i}
-              className={`h-2 rounded-full transition-all ${
-                i < step ? "w-6 bg-wine" : i === step && !isDone ? "w-6 bg-wine/60" : "w-2 bg-border"
-              }`}
-            />
-          ))}
+        {/* ordering rule hint */}
+        <div className="shrink-0 border-b border-border bg-wine/5 px-4 py-3">
+          <p className="text-xs font-semibold text-wine mb-1">Escolha na ordem os sabores das pizzas:</p>
+          <div className="flex flex-wrap gap-2">
+            {hints.map((h) => (
+              <span key={h} className="rounded-full border border-wine/30 bg-card px-2.5 py-1 text-xs text-muted">{h}</span>
+            ))}
+          </div>
         </div>
 
         {/* scrollable body */}
         <div className="flex-1 overflow-y-auto">
+          <SectionHeader
+            title="Escolha os sabores"
+            subtitle={`${selectedIds.length} de ${totalFlavors} selecionado(s)`}
+            required
+          />
 
-          {/* confirmed pizzas summary */}
-          {confirmedSummary.length > 0 && (
-            <div className="px-4 py-3 space-y-1 border-b border-border bg-card-hover">
-              {confirmedSummary.map(({ pizzaNum, names }) => (
-                <p key={pizzaNum} className="text-xs text-muted">
-                  <span className="font-semibold text-foreground">Pizza {pizzaNum}:</span>{" "}
-                  {names.join(" + ")}
-                </p>
-              ))}
-            </div>
-          )}
-
-          {!isDone ? (
-            <>
-              <SectionHeader
-                title={`Pizza ${step + 1} de ${pizzaCount}`}
-                subtitle={`${currentFlavors.length} de ${maxFlavorsPerPizza} sabor(es) selecionado(s)`}
-                required
-              />
-              {bundleFlavors.map((flavor) => (
-                <FlavorCard
-                  key={flavor.id}
-                  flavor={flavor}
-                  selected={currentFlavors.includes(flavor.id)}
-                  disabled={currentFlavors.length >= maxFlavorsPerPizza && !currentFlavors.includes(flavor.id)}
-                  onToggle={() => toggleFlavor(flavor.id)}
-                  expanded={expandedFlavorId === flavor.id}
-                  onExpandToggle={() => setExpandedFlavorId((e) => (e === flavor.id ? null : flavor.id))}
-                  removedIngredients={[]}
-                  onToggleIngredient={() => {}}
-                />
-              ))}
-            </>
-          ) : (
-            <div className="px-5 py-6 text-center">
-              <p className="text-4xl mb-3">🍕</p>
-              <p className="text-base font-semibold text-foreground">Pronto!</p>
-              <p className="mt-1 text-sm text-muted">Confira seu pedido e adicione ao carrinho.</p>
-              <div className="mt-4 space-y-2 text-left">
-                {flavorsByPizza.map((ids, pi) => {
-                  const names = ids.map((id) => bundleFlavors.find((f) => f.id === id)?.name ?? "").filter(Boolean);
+          {/* selected slots visual */}
+          {selectedIds.length > 0 && (
+            <div className="border-b border-border bg-card-hover px-4 py-3">
+              <div className="space-y-1">
+                {Array.from({ length: pizzaCount }).map((_, pi) => {
+                  const slotStart = pi * maxFlavorsPerPizza;
+                  const slotEnd = slotStart + maxFlavorsPerPizza;
+                  const pizzaFlavors = selectedIds.slice(slotStart, slotEnd).map(
+                    (id) => bundleFlavors.find((f) => f.id === id)?.name ?? ""
+                  );
+                  if (pizzaFlavors.length === 0) return null;
                   return (
-                    <div key={pi} className="rounded-xl border border-border bg-card px-4 py-3">
-                      <p className="text-xs font-semibold text-muted uppercase tracking-wide">Pizza {pi + 1}</p>
-                      <p className="mt-1 text-sm font-medium text-foreground">{names.join(" + ")}</p>
-                    </div>
+                    <p key={pi} className="text-xs text-foreground">
+                      <span className="font-semibold text-wine">Pizza {pi + 1}:</span>{" "}
+                      {pizzaFlavors.join(" + ")}
+                    </p>
                   );
                 })}
               </div>
             </div>
           )}
+
+          {bundleFlavors.map((flavor, idx) => {
+            const isSelected = selectedIds.includes(flavor.id);
+            const selIdx = selectedIds.indexOf(flavor.id);
+            const isDisabled = !isSelected && selectedIds.length >= totalFlavors;
+            return (
+              <div
+                key={flavor.id}
+                className={`flex cursor-pointer items-center gap-3 border-b border-border px-4 py-3 last:border-0 ${isDisabled ? "opacity-40" : ""} ${isSelected ? "bg-wine/5" : "hover:bg-card-hover"}`}
+                onClick={() => !isDisabled && toggleFlavor(flavor.id)}
+              >
+                <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${isSelected ? "border-wine bg-wine" : "border-border"}`}>
+                  {isSelected && <span className="text-[10px] font-bold text-white">{selIdx + 1}</span>}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium text-foreground">{flavor.name}</p>
+                    {isSelected && (
+                      <span className="rounded-full bg-wine/10 px-2 py-0.5 text-xs font-medium text-wine">
+                        {pizzaLabel(selIdx)}
+                      </span>
+                    )}
+                  </div>
+                  {(flavor.ingredients ?? []).length > 0 && (
+                    <p className="mt-0.5 text-xs text-muted line-clamp-1">
+                      {flavor.ingredients.map((i) => i.name).join(", ")}
+                    </p>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
 
         {/* sticky footer */}
         <div className="shrink-0 border-t border-border bg-card px-5 py-4">
-          {!isDone ? (
-            <div>
-              {/* Manual-advance button: only shown when ≥1 flavor selected but below max */}
-              {canAdvance && currentFlavors.length < maxFlavorsPerPizza && (
-                <div className="flex items-center gap-3">
-                  {step > 0 && (
-                    <button
-                      type="button"
-                      onClick={goBack}
-                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-card-hover text-muted"
-                    >
-                      ←
-                    </button>
-                  )}
-                  <button
-                    onClick={advance}
-                    className="flex-1 rounded-xl bg-wine px-4 py-2.5 text-sm font-semibold text-white hover:bg-wine-hover"
-                  >
-                    Confirmar Pizza {step + 1}
-                  </button>
-                </div>
-              )}
-              {/* Back button only (when no flavor selected but not first step) */}
-              {!canAdvance && step > 0 && (
-                <button
-                  type="button"
-                  onClick={goBack}
-                  className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card-hover text-muted"
-                >
-                  ←
-                </button>
-              )}
-              {!canAdvance && (
-                <p className="mt-2 text-center text-xs text-muted">
-                  Selecione pelo menos um sabor para continuar
-                </p>
-              )}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={() => setQuantity((q) => Math.max(1, q - 1))} className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card-hover text-foreground hover:bg-border">−</button>
+              <span className="w-6 text-center text-sm font-semibold text-foreground">{quantity}</span>
+              <button type="button" onClick={() => setQuantity((q) => q + 1)} className="flex h-9 w-9 items-center justify-center rounded-full border border-wine bg-wine/10 text-wine hover:bg-wine/20">+</button>
             </div>
-          ) : (
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={goBack}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-card-hover text-muted"
-              >
-                ←
-              </button>
-              <div className="flex flex-1 items-center gap-3">
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                    className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card-hover text-foreground hover:bg-border"
-                  >
-                    −
-                  </button>
-                  <span className="w-6 text-center text-sm font-semibold text-foreground">{quantity}</span>
-                  <button
-                    type="button"
-                    onClick={() => setQuantity((q) => q + 1)}
-                    className="flex h-9 w-9 items-center justify-center rounded-full border border-wine bg-wine/10 text-wine hover:bg-wine/20"
-                  >
-                    +
-                  </button>
-                </div>
-                <button
-                  onClick={confirm}
-                  className="flex-1 rounded-xl bg-wine px-4 py-2.5 text-sm font-semibold text-white hover:bg-wine-hover"
-                >
-                  Adicionar · {formatCurrency(product.base_price * quantity)}
-                </button>
-              </div>
-            </div>
-          )}
-          {!isDone && !canAdvance && (
+            <button
+              onClick={confirm}
+              disabled={!canConfirm}
+              className="flex-1 rounded-xl bg-wine px-4 py-2.5 text-sm font-semibold text-white hover:bg-wine-hover disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Adicionar · {formatCurrency(product.base_price * quantity)}
+            </button>
+          </div>
+          {!canConfirm && (
             <p className="mt-2 text-center text-xs text-muted">Selecione pelo menos um sabor para continuar</p>
           )}
         </div>
