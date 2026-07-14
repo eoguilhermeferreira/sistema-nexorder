@@ -518,6 +518,10 @@ function ProdutosTab({ companyId }: { companyId: string }) {
   const [price, setPrice] = useState("");
   const [isSweet, setIsSweet] = useState(false);
   const [sweetSurcharge, setSweetSurcharge] = useState("");
+  const [isBundle, setIsBundle] = useState(false);
+  const [bundlePizzaCount, setBundlePizzaCount] = useState("2");
+  const [bundleMaxFlavors, setBundleMaxFlavors] = useState("2");
+  const [bundleFlavorCatId, setBundleFlavorCatId] = useState("");
   const [saving, setSaving] = useState(false);
 
   // bulk import
@@ -590,13 +594,17 @@ function ProdutosTab({ companyId }: { companyId: string }) {
         : [];
       await (createClient() as any).from("flavors").insert({ company_id: companyId, category_id: selectedCatId, name: name.trim(), ingredients, available: true, is_sweet: isSweet, sweet_surcharge: isSweet ? Number(sweetSurcharge || 0) : 0 });
     } else {
-      await createClient().from("products").insert({
+      await (createClient() as any).from("products").insert({
         company_id: companyId, category_id: selectedCatId, product_type: "comum",
         name: name.trim(), description: description.trim() || null,
         base_price: price ? Number(price) : 0, active: true,
+        bundle_pizza_count: isBundle ? Number(bundlePizzaCount) : 1,
+        bundle_max_flavors: isBundle ? Number(bundleMaxFlavors) : 2,
+        bundle_flavor_category_id: isBundle && bundleFlavorCatId ? bundleFlavorCatId : null,
       });
     }
     setName(""); setDescription(""); setPrice(""); setIsSweet(false); setSweetSurcharge("");
+    setIsBundle(false); setBundlePizzaCount("2"); setBundleMaxFlavors("2"); setBundleFlavorCatId("");
     setSaving(false);
     loadItems(selectedCatId, selectedCat.is_pizza);
   }
@@ -797,13 +805,49 @@ function ProdutosTab({ companyId }: { companyId: string }) {
               </div>
             )}
             {!isPizza && (
-              <input
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                type="number" min="0" step="0.01"
-                placeholder="Preço (R$)"
-                className="w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground"
-              />
+              <>
+                <input
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  type="number" min="0" step="0.01"
+                  placeholder="Preço (R$)"
+                  className="w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground"
+                />
+                {/* Bundle toggle */}
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsBundle((v) => !v)}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${isBundle ? "bg-wine text-white" : "bg-card-hover text-muted"}`}
+                  >
+                    🍕 É uma Promoção (bundle de pizzas)?
+                  </button>
+                </div>
+                {isBundle && (
+                  <div className="space-y-2 rounded-xl border border-wine/30 bg-wine/5 p-3">
+                    <p className="text-xs font-semibold text-wine">Configurar Promoção</p>
+                    <div className="flex gap-2">
+                      <div className="flex-1">
+                        <label className="text-xs text-muted">Qtd. de pizzas</label>
+                        <input value={bundlePizzaCount} onChange={(e) => setBundlePizzaCount(e.target.value)} type="number" min="1" max="10" className="mt-1 w-full rounded-lg border border-border bg-card-hover px-3 py-1.5 text-sm text-foreground" />
+                      </div>
+                      <div className="flex-1">
+                        <label className="text-xs text-muted">Max sabores por pizza</label>
+                        <input value={bundleMaxFlavors} onChange={(e) => setBundleMaxFlavors(e.target.value)} type="number" min="1" max="8" className="mt-1 w-full rounded-lg border border-border bg-card-hover px-3 py-1.5 text-sm text-foreground" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted">Categoria de sabores</label>
+                      <select value={bundleFlavorCatId} onChange={(e) => setBundleFlavorCatId(e.target.value)} className="mt-1 w-full rounded-lg border border-border bg-card-hover px-3 py-1.5 text-sm text-foreground">
+                        <option value="">Selecione a categoria de pizza...</option>
+                        {categories.filter((c) => c.is_pizza).map((c) => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
             <button onClick={addItem} disabled={saving || !name.trim()} className="rounded-lg bg-wine px-4 py-2 text-sm font-medium text-white hover:bg-wine-hover disabled:opacity-50">
               Adicionar
@@ -922,7 +966,14 @@ function ProdutosTab({ companyId }: { companyId: string }) {
                 ) : (
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-foreground">{p.name}</p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-medium text-foreground">{p.name}</p>
+                        {p.bundle_flavor_category_id && (
+                          <span className="rounded-full bg-wine/10 px-2 py-0.5 text-xs font-medium text-wine">
+                            🍕 Bundle {p.bundle_pizza_count}x pizza
+                          </span>
+                        )}
+                      </div>
                       {p.description && <p className="mt-0.5 text-xs text-muted">{p.description}</p>}
                       <p className="mt-1 text-sm font-semibold text-wine">{formatCurrency(p.base_price)}</p>
                     </div>
