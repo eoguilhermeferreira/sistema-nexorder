@@ -457,36 +457,28 @@ function MesasTab({ companyId, slug }: { companyId: string; slug: string }) {
     fetchTables();
   }
 
-  function printQRCodes() {
-    const origin = typeof window !== "undefined" ? window.location.origin : "";
-    const rows = tables.map((table) => {
-      const url = `${origin}/cardapio/${slug}/mesa/${table.number}`;
-      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}`;
-      return `
-        <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px;border:1px solid #ddd;border-radius:12px;break-inside:avoid;">
-          <p style="font-size:14px;font-weight:700;margin:0;">Mesa ${table.number}</p>
-          <img src="${qrUrl}" width="160" height="160" style="border-radius:8px;" />
-          <p style="font-size:10px;color:#666;margin:0;text-align:center;">Escaneie para fazer seu pedido</p>
-        </div>`;
-    }).join("");
-
+  function printSingleQR(tableNumber: number, url: string) {
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(url)}`;
     const win = window.open("", "_blank");
     if (!win) return;
     win.document.write(`<!DOCTYPE html><html><head>
-      <title>QR Codes das Mesas</title>
+      <title>QR Code Mesa ${tableNumber}</title>
       <style>
-        body { font-family: sans-serif; margin: 24px; }
-        h1 { font-size: 18px; margin-bottom: 16px; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
-        @media print { h1 { display:none; } .no-print { display:none; } }
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+        .card { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 32px; border: 2px solid #ddd; border-radius: 16px; }
+        p { margin: 0; }
+        @media print { .no-print { display: none; } }
       </style>
     </head><body>
-      <h1>QR Codes das Mesas</h1>
-      <button class="no-print" onclick="window.print()" style="margin-bottom:16px;padding:8px 16px;background:#8b1a1a;color:white;border:none;border-radius:8px;cursor:pointer;font-size:14px;">Imprimir</button>
-      <div class="grid">${rows}</div>
+      <div class="card">
+        <p style="font-size:22px;font-weight:700;">Mesa ${tableNumber}</p>
+        <img src="${qrUrl}" width="240" height="240" style="border-radius:8px;" />
+        <p style="font-size:12px;color:#666;">Escaneie para fazer seu pedido</p>
+      </div>
+      <button class="no-print" onclick="window.print()" style="margin-top:24px;padding:10px 24px;background:#8b1a1a;color:white;border:none;border-radius:8px;cursor:pointer;font-size:14px;">Imprimir</button>
     </body></html>`);
     win.document.close();
-    setTimeout(() => win.print(), 800);
+    setTimeout(() => win.print(), 600);
   }
 
   if (loading) return <p className="text-sm text-muted">Carregando...</p>;
@@ -503,17 +495,6 @@ function MesasTab({ companyId, slug }: { companyId: string; slug: string }) {
         <button onClick={generateTables} className="rounded-lg bg-wine px-4 py-2 text-sm font-medium text-white hover:bg-wine-hover">
           Gerar Mesas
         </button>
-        {tables.length > 0 && (
-          <button
-            onClick={printQRCodes}
-            className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-card-hover"
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>
-            </svg>
-            Imprimir QR Codes
-          </button>
-        )}
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -538,6 +519,15 @@ function MesasTab({ companyId, slug }: { companyId: string; slug: string }) {
                 </button>
               </div>
               <img src={qrUrl} alt={`QR mesa ${table.number}`} className="h-20 w-20 rounded bg-white p-1" />
+              <button
+                onClick={() => printSingleQR(table.number, url)}
+                className="flex w-full items-center justify-center gap-1 rounded-lg border border-border bg-card-hover px-2 py-1.5 text-xs text-muted hover:text-foreground transition-colors"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>
+                </svg>
+                Imprimir
+              </button>
             </div>
           );
         })}
