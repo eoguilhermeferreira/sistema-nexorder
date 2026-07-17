@@ -148,8 +148,12 @@ function MesaContent({ storefront, numero }: { storefront: ReturnType<typeof use
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background px-6">
         <div className="w-full max-w-xs text-center">
+          {/* Restaurant name + welcome */}
+          <p className="text-lg font-bold text-foreground">{company?.name}</p>
+          <p className="mt-1 text-sm text-muted">Seja bem-vindo(a)! 🎉</p>
+
           {/* Table confirmation */}
-          <div className="mb-8 rounded-2xl border-2 border-wine bg-wine/5 px-8 py-6">
+          <div className="my-8 rounded-2xl border-2 border-wine bg-wine/5 px-8 py-6">
             <p className="text-xs font-semibold uppercase tracking-widest text-wine">Você está na</p>
             <p className="mt-1 text-7xl font-black text-foreground leading-none">{numero}</p>
             <p className="mt-1 text-sm font-medium text-muted">Mesa {numero}</p>
