@@ -28,7 +28,7 @@ export default function MesaCardapioPage() {
 }
 
 function MesaContent({ storefront, numero }: { storefront: ReturnType<typeof useStorefront>; numero: string }) {
-  const { company, categories, products, flavors, addons } = storefront;
+  const { company, categories, products, flavors, addons, flavorSizePrices, addonSizePrices, prepTimes } = storefront;
   const { items, total, clear } = useCart();
 
   const [tableId, setTableId] = useState<string | null>(null);
@@ -176,16 +176,65 @@ function MesaContent({ storefront, numero }: { storefront: ReturnType<typeof use
   }
 
   return (
-    <div className="min-h-screen bg-background pb-24">
-      <div className="mx-auto max-w-3xl px-4 pt-6">
-        <h1 className="text-xl font-bold text-foreground">Mesa {numero}</h1>
-        <p className="text-sm text-muted">
-          Comanda de {customer.name} — total já consumido: {formatCurrency(customer.subtotal ?? 0)}
-        </p>
+    <div className="min-h-screen bg-background" style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
+      {/* banner */}
+      <div
+        className="h-36 w-full bg-card-hover"
+        style={
+          company?.banner_url
+            ? { backgroundImage: `url(${company.banner_url})`, backgroundSize: "cover", backgroundPosition: "center" }
+            : undefined
+        }
+      />
 
-        <div className="mt-6">
-          <MenuBrowser categories={categories} products={products} flavors={flavors} addons={addons} />
+      {/* header */}
+      <div className="px-4">
+        <div className="-mt-6 flex items-end gap-3">
+          {company?.logo_url ? (
+            <img
+              src={company.logo_url}
+              alt={company.name}
+              className={`h-20 w-20 shrink-0 border-4 border-background bg-card object-cover shadow-md ${company.logo_shape === "round" ? "rounded-full" : "rounded-2xl"}`}
+            />
+          ) : (
+            <div className="h-20 w-20 shrink-0 border-4 border-background bg-card shadow-md rounded-2xl" />
+          )}
+          <div className="pb-1 min-w-0 flex-1">
+            <h1 className="truncate text-lg font-bold text-foreground leading-tight">
+              {company?.fantasy_name ?? company?.name}
+            </h1>
+            <span className="inline-block rounded-full bg-green-500/10 px-2 py-0.5 text-xs font-medium text-green-600">
+              Aberto agora
+            </span>
+          </div>
         </div>
+        {company?.description && (
+          <p className="mt-3 text-sm leading-relaxed text-muted">{company.description}</p>
+        )}
+
+        {/* mesa info bar */}
+        <div className="mt-3 flex items-center gap-2 rounded-xl border border-wine/30 bg-wine/5 px-4 py-2.5">
+          <span className="text-sm font-semibold text-wine">Mesa {numero}</span>
+          <span className="text-muted">·</span>
+          <span className="text-sm text-muted">{customer.name}</span>
+          {(customer.subtotal ?? 0) > 0 && (
+            <>
+              <span className="text-muted">·</span>
+              <span className="text-sm text-muted">Consumido: {formatCurrency(customer.subtotal ?? 0)}</span>
+            </>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-4 px-4 pb-32">
+        <MenuBrowser
+          categories={categories}
+          products={products}
+          flavors={flavors}
+          addons={addons}
+          flavorSizePrices={flavorSizePrices}
+          addonSizePrices={addonSizePrices}
+        />
       </div>
 
       {sent && (
