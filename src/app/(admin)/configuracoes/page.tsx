@@ -465,14 +465,19 @@ function MesasTab({ companyId, slug, companyName }: { companyId: string; slug: s
       <title>QR Code Mesa ${tableNumber}</title>
       <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; background: #f5f5f5; }
+        html, body { height: 100%; }
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100%; background: #f5f5f5; padding: 24px; }
         .card { display: flex; flex-direction: column; align-items: center; background: white; border: 3px solid #111; border-radius: 20px; padding: 32px 40px; gap: 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.10); }
         .restaurant { font-size: 13px; color: #888; letter-spacing: 0.08em; text-transform: uppercase; }
         .mesa-label { font-size: 15px; font-weight: 600; color: #555; letter-spacing: 0.05em; text-transform: uppercase; }
         .mesa-number { font-size: 64px; font-weight: 900; color: #111; line-height: 1; }
         .divider { width: 100%; height: 1px; background: #eee; }
         .scan-text { font-size: 13px; color: #666; text-align: center; }
-        @media print { .no-print { display: none; } body { background: white; } }
+        @page { margin: 0; size: A4; }
+        @media print {
+          .no-print { display: none; }
+          html, body { height: 100vh; background: white; }
+        }
       </style>
     </head><body>
       <div class="card">
