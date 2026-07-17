@@ -38,7 +38,7 @@ export default function ConfiguracoesPage() {
 
       <div className="mt-6">
         {tab === "empresa" && <EmpresaTab companyId={company.id} />}
-        {tab === "mesas" && <MesasTab companyId={company.id} slug={company.slug} />}
+        {tab === "mesas" && <MesasTab companyId={company.id} slug={company.slug} companyName={company.name} />}
         {tab === "impressoras" && <ImpressorasTab companyId={company.id} />}
       </div>
     </div>
@@ -422,7 +422,7 @@ function HorariosTab({ companyId }: { companyId: string }) {
   );
 }
 
-function MesasTab({ companyId, slug }: { companyId: string; slug: string }) {
+function MesasTab({ companyId, slug, companyName }: { companyId: string; slug: string; companyName: string }) {
   const [tables, setTables] = useState<TableRestaurant[]>([]);
   const [loading, setLoading] = useState(true);
   const [count, setCount] = useState("5");
@@ -458,27 +458,35 @@ function MesasTab({ companyId, slug }: { companyId: string; slug: string }) {
   }
 
   function printSingleQR(tableNumber: number, url: string) {
-    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(url)}`;
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(url)}`;
     const win = window.open("", "_blank");
     if (!win) return;
     win.document.write(`<!DOCTYPE html><html><head>
       <title>QR Code Mesa ${tableNumber}</title>
       <style>
-        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
-        .card { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 32px; border: 2px solid #ddd; border-radius: 16px; }
-        p { margin: 0; }
-        @media print { .no-print { display: none; } }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; background: #f5f5f5; }
+        .card { display: flex; flex-direction: column; align-items: center; background: white; border: 3px solid #111; border-radius: 20px; padding: 32px 40px; gap: 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.10); }
+        .restaurant { font-size: 13px; color: #888; letter-spacing: 0.08em; text-transform: uppercase; }
+        .mesa-label { font-size: 15px; font-weight: 600; color: #555; letter-spacing: 0.05em; text-transform: uppercase; }
+        .mesa-number { font-size: 64px; font-weight: 900; color: #111; line-height: 1; }
+        .divider { width: 100%; height: 1px; background: #eee; }
+        .scan-text { font-size: 13px; color: #666; text-align: center; }
+        @media print { .no-print { display: none; } body { background: white; } }
       </style>
     </head><body>
       <div class="card">
-        <p style="font-size:22px;font-weight:700;">Mesa ${tableNumber}</p>
-        <img src="${qrUrl}" width="240" height="240" style="border-radius:8px;" />
-        <p style="font-size:12px;color:#666;">Escaneie para fazer seu pedido</p>
+        <p class="restaurant">${companyName}</p>
+        <div class="divider"></div>
+        <p class="mesa-label">Mesa</p>
+        <p class="mesa-number">${tableNumber}</p>
+        <img src="${qrUrl}" width="220" height="220" style="border-radius:8px;" />
+        <p class="scan-text">📱 Escaneie o QR Code<br>para ver o cardápio e fazer seu pedido</p>
       </div>
       <button class="no-print" onclick="window.print()" style="margin-top:24px;padding:10px 24px;background:#8b1a1a;color:white;border:none;border-radius:8px;cursor:pointer;font-size:14px;">Imprimir</button>
     </body></html>`);
     win.document.close();
-    setTimeout(() => win.print(), 600);
+    setTimeout(() => win.print(), 700);
   }
 
   if (loading) return <p className="text-sm text-muted">Carregando...</p>;
