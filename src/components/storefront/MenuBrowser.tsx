@@ -25,25 +25,63 @@ export function MenuBrowser({
   const [activeProduct, setActiveProduct] = useState<{ product: Product; categoryName: string } | null>(null);
   const [activeCatId, setActiveCatId] = useState<string | null>(null);
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const pillRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const pillsContainerRef = useRef<HTMLDivElement | null>(null);
+  const isScrollingTo = useRef(false);
 
   const sortedCategories = [...categories].sort((a, b) => a.display_order - b.display_order);
 
+  // IntersectionObserver: update active pill as user scrolls
+  useEffect(() => {
+    if (sortedCategories.length === 0) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (isScrollingTo.current) return;
+        // pick the topmost section that is intersecting
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+        if (visible.length > 0) {
+          const id = visible[0].target.getAttribute("data-cat-id")!;
+          setActiveCatId(id);
+          // scroll pill into view
+          const pill = pillRefs.current[id];
+          const container = pillsContainerRef.current;
+          if (pill && container) {
+            const pillLeft = pill.offsetLeft;
+            const pillWidth = pill.offsetWidth;
+            const containerWidth = container.offsetWidth;
+            container.scrollTo({ left: pillLeft - containerWidth / 2 + pillWidth / 2, behavior: "smooth" });
+          }
+        }
+      },
+      { rootMargin: "-64px 0px -40% 0px", threshold: 0 }
+    );
+    Object.values(sectionRefs.current).forEach((el) => { if (el) observer.observe(el); });
+    return () => observer.disconnect();
+  }, [sortedCategories.length]);
+
   function scrollToCategory(catId: string) {
+    isScrollingTo.current = true;
     setActiveCatId(catId);
     const el = sectionRefs.current[catId];
-    if (!el) return;
-    const top = el.getBoundingClientRect().top + window.scrollY - 64;
-    window.scrollTo({ top, behavior: "smooth" });
+    if (el) {
+      const top = el.getBoundingClientRect().top + window.scrollY - 64;
+      window.scrollTo({ top, behavior: "smooth" });
+    }
+    // re-enable observer after scroll settles
+    setTimeout(() => { isScrollingTo.current = false; }, 800);
   }
 
   return (
     <div>
       {/* category pills */}
       <div className="sticky top-0 z-10 -mx-4 bg-background px-4 py-2 shadow-sm">
-        <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" } as React.CSSProperties}>
+        <div ref={pillsContainerRef} className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" } as React.CSSProperties}>
           {sortedCategories.map((cat) => (
             <button
               key={cat.id}
+              ref={(el) => { pillRefs.current[cat.id] = el; }}
               onClick={() => scrollToCategory(cat.id)}
               className={`shrink-0 rounded-full border px-4 py-2 text-sm font-medium transition-colors active:scale-95 ${
                 activeCatId === cat.id
@@ -67,7 +105,7 @@ export function MenuBrowser({
           if (category.is_pizza) {
             if (categoryFlavors.length === 0) return null;
             return (
-              <div key={category.id} ref={(el) => { sectionRefs.current[category.id] = el; }}>
+              <div key={category.id} ref={(el) => { sectionRefs.current[category.id] = el; }} data-cat-id={category.id}>
                 <h2 className="text-base font-bold text-foreground">{category.name}</h2>
                 <PizzaSection
                   category={category}
@@ -81,7 +119,7 @@ export function MenuBrowser({
 
           if (categoryProducts.length === 0) return null;
           return (
-            <div key={category.id} ref={(el) => { sectionRefs.current[category.id] = el; }}>
+            <div key={category.id} ref={(el) => { sectionRefs.current[category.id] = el; }} data-cat-id={category.id}>
               <h2 className="text-base font-bold text-foreground">{category.name}</h2>
               <div className="mt-3 divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
                 {categoryProducts.map((product) => (
