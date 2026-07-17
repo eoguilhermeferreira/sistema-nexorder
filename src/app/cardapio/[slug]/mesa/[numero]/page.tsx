@@ -146,18 +146,27 @@ function MesaContent({ storefront, numero }: { storefront: ReturnType<typeof use
 
   if (!customer) {
     return (
-      <div className="mx-auto max-w-sm p-8">
-        <h1 className="text-xl font-semibold text-foreground">Mesa {numero}</h1>
-        <p className="mt-2 text-sm text-muted">Informe seu nome para abrir sua comanda.</p>
-        <input
-          value={nameInput}
-          onChange={(e) => setNameInput(e.target.value)}
-          placeholder="Seu nome"
-          className="mt-4 w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground"
-        />
-        <button onClick={joinTable} className="mt-3 w-full rounded-lg bg-wine px-4 py-2 text-sm font-medium text-white hover:bg-wine-hover">
-          Entrar
-        </button>
+      <div className="flex min-h-screen flex-col items-center justify-center bg-background px-6">
+        <div className="w-full max-w-xs text-center">
+          {/* Table confirmation */}
+          <div className="mb-8 rounded-2xl border-2 border-wine bg-wine/5 px-8 py-6">
+            <p className="text-xs font-semibold uppercase tracking-widest text-wine">Você está na</p>
+            <p className="mt-1 text-7xl font-black text-foreground leading-none">{numero}</p>
+            <p className="mt-1 text-sm font-medium text-muted">Mesa {numero}</p>
+          </div>
+
+          <p className="text-sm text-muted mb-4">Informe seu nome para abrir sua comanda.</p>
+          <input
+            value={nameInput}
+            onChange={(e) => setNameInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && joinTable()}
+            placeholder="Seu nome"
+            className="w-full rounded-lg border border-border bg-card-hover px-3 py-2.5 text-sm text-foreground"
+          />
+          <button onClick={joinTable} disabled={!nameInput.trim()} className="mt-3 w-full rounded-lg bg-wine px-4 py-3 text-sm font-semibold text-white hover:bg-wine-hover disabled:opacity-40">
+            Entrar na mesa
+          </button>
+        </div>
       </div>
     );
   }
