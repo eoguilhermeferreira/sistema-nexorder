@@ -212,6 +212,50 @@ function MesaContent({ storefront, numero }: { storefront: ReturnType<typeof use
           <p className="mt-3 text-sm leading-relaxed text-muted">{company.description}</p>
         )}
 
+        {company?.business_hours_text && (
+          <div className="mt-2 flex items-start gap-2">
+            <span className="shrink-0 text-xs font-semibold text-foreground">Horário de Funcionamento</span>
+            <div className="text-xs text-muted leading-5">
+              {company.business_hours_text.split("|").map((line, i) => (
+                <p key={i}>{line.trim()}</p>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {(company?.instagram || company?.facebook || company?.website) && (
+          <div className="mt-3 flex items-center gap-2">
+            {company?.instagram && (
+              <a href={company.instagram.startsWith("http") ? company.instagram : `https://instagram.com/${company.instagram.replace("@", "")}`} target="_blank" rel="noopener noreferrer" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-card border border-border hover:bg-card-hover transition-colors" title="Instagram">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                  <defs><radialGradient id="ig-grad2" cx="30%" cy="107%" r="130%"><stop offset="0%" stopColor="#fdf497"/><stop offset="5%" stopColor="#fdf497"/><stop offset="45%" stopColor="#fd5949"/><stop offset="60%" stopColor="#d6249f"/><stop offset="90%" stopColor="#285AEB"/></radialGradient></defs>
+                  <rect x="2" y="2" width="20" height="20" rx="5.5" fill="url(#ig-grad2)"/>
+                  <circle cx="12" cy="12" r="4.5" stroke="white" strokeWidth="1.8" fill="none"/>
+                  <circle cx="17.2" cy="6.8" r="1.1" fill="white"/>
+                </svg>
+              </a>
+            )}
+            {company?.facebook && (
+              <a href={company.facebook.startsWith("http") ? company.facebook : `https://facebook.com/${company.facebook}`} target="_blank" rel="noopener noreferrer" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#1877F2] border border-[#1877F2] hover:opacity-90 transition-opacity" title="Facebook">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.41c0-3.025 1.792-4.697 4.533-4.697 1.312 0 2.686.236 2.686.236v2.97h-1.513c-1.491 0-1.956.93-1.956 1.886v2.268h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/></svg>
+              </a>
+            )}
+            {company?.website && (
+              <a href={company.website.startsWith("http") ? company.website : `https://${company.website}`} target="_blank" rel="noopener noreferrer" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-card border border-border hover:bg-card-hover transition-colors text-foreground" title="Website">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+              </a>
+            )}
+          </div>
+        )}
+
+        {prepTimes && (prepTimes.delivery_minutes > 0 || prepTimes.pickup_minutes > 0 || prepTimes.table_minutes > 0) && (
+          <div className="mt-2 flex gap-1.5 overflow-x-auto pb-0.5">
+            {prepTimes.delivery_minutes > 0 && <span className="inline-flex items-center gap-1 rounded-full bg-card border border-border px-2.5 py-1 text-xs text-muted whitespace-nowrap">🛵 Entrega {prepTimes.delivery_minutes} min</span>}
+            {prepTimes.pickup_minutes > 0 && <span className="inline-flex items-center gap-1 rounded-full bg-card border border-border px-2.5 py-1 text-xs text-muted whitespace-nowrap">🏃 Retirada {prepTimes.pickup_minutes} min</span>}
+            {prepTimes.table_minutes > 0 && <span className="inline-flex items-center gap-1 rounded-full bg-card border border-border px-2.5 py-1 text-xs text-muted whitespace-nowrap">🍽️ Mesa {prepTimes.table_minutes} min</span>}
+          </div>
+        )}
+
         {/* mesa info bar */}
         <div className="mt-3 flex items-center gap-2 rounded-xl border border-wine/30 bg-wine/5 px-4 py-2.5">
           <span className="text-sm font-semibold text-wine">Mesa {numero}</span>
