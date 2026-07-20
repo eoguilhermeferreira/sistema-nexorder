@@ -365,7 +365,7 @@ function PizzaSection({
               <button
                 key={size.id}
                 onClick={() => selectSize(size.id)}
-                className={`flex flex-col items-start rounded-xl border px-4 py-2 text-left transition-colors active:scale-95 ${
+                className={`flex flex-1 flex-col items-start rounded-xl border px-4 py-2 text-left transition-colors active:scale-95 ${
                   selectedSizeId === size.id
                     ? "border-wine bg-wine text-white"
                     : "border-border bg-card-hover text-foreground"
