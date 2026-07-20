@@ -360,7 +360,7 @@ function PizzaSection({
         {sizes.length === 0 ? (
           <p className="mt-2 text-xs text-muted">Nenhum tamanho cadastrado.</p>
         ) : (
-          <div className="mt-3 flex flex-wrap gap-2">
+          <div className="mt-3 flex gap-2">
             {sizes.map((size) => (
               <button
                 key={size.id}
