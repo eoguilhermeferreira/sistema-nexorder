@@ -1,5 +1,5 @@
-export function formatCurrency(value: number) {
-  return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+export function formatCurrency(value: number | null | undefined) {
+  return (value ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
 export function formatTime(dateIso: string) {
