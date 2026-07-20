@@ -25,6 +25,7 @@ export interface StorefrontCompany {
   website: string | null;
   logo_shape: string | null;
   business_hours_text: string | null;
+  delivery_fee: number | null;
 }
 
 export interface StorefrontPrepTimes {
@@ -52,7 +53,7 @@ export function useStorefront(slug: string) {
     const { data: companyRow } = await supabase
       .from("companies")
       .select(
-        "id, slug, name, fantasy_name, description, logo_url, banner_url, primary_color, secondary_color, highlight_color, is_open, address, city, state, whatsapp, instagram, facebook, website, logo_shape, business_hours_text"
+        "id, slug, name, fantasy_name, description, logo_url, banner_url, primary_color, secondary_color, highlight_color, is_open, address, city, state, whatsapp, instagram, facebook, website, logo_shape, business_hours_text, delivery_fee"
       )
       .eq("slug", slug)
       .single();

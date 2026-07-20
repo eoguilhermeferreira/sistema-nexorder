@@ -247,6 +247,7 @@ function EmpresaTab({ companyId }: { companyId: string }) {
         secondary_color: company.secondary_color,
         highlight_color: company.highlight_color,
         is_open: company.is_open,
+        delivery_fee: company.delivery_fee ?? 0,
       })
       .eq("id", companyId);
     setSaving(false);
@@ -334,6 +335,26 @@ function EmpresaTab({ companyId }: { companyId: string }) {
         />
         <span className="text-xs text-muted">Este texto aparecerá no cardápio do cliente.</span>
       </label>
+      {/* Taxa de entrega */}
+      <div className="rounded-xl border border-border bg-card p-4 space-y-2">
+        <h3 className="text-sm font-semibold text-foreground">Taxa de entrega</h3>
+        <p className="text-xs text-muted">Valor cobrado automaticamente quando o cliente escolher entrega.</p>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted">R$</span>
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            value={company.delivery_fee ?? 0}
+            onChange={(e) => setCompany({ ...company, delivery_fee: Number(e.target.value) })}
+            className="w-32 rounded-lg border border-border bg-card-hover px-3 py-2 text-sm text-foreground"
+          />
+          {(company.delivery_fee ?? 0) === 0 && (
+            <span className="text-xs text-muted">(sem taxa — retirada grátis)</span>
+          )}
+        </div>
+      </div>
+
       <label className="flex items-center gap-2 text-sm">
         <input
           type="checkbox"

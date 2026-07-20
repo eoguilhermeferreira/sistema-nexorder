@@ -250,6 +250,8 @@ function CheckoutModal({
   const router = useRouter();
 
   const [type, setType] = useState<"entrega" | "retirada">("entrega");
+  const deliveryFee = type === "entrega" ? (company?.delivery_fee ?? 0) : 0;
+  const grandTotal = total + deliveryFee;
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [street, setStreet] = useState("");
@@ -298,7 +300,7 @@ function CheckoutModal({
         status: "aguardando_aceite",
         payment_method: paymentMethod,
         change_for: paymentMethod === "dinheiro" && changeFor ? Number(changeFor) : null,
-        total,
+        total: grandTotal,
         notes: notes.trim() || null,
       })
       .select()
@@ -432,9 +434,21 @@ function CheckoutModal({
                 </div>
               </div>
             ))}
+            {deliveryFee > 0 && (
+              <div className="flex justify-between rounded-xl bg-card px-4 py-2">
+                <span className="text-sm text-muted">Subtotal</span>
+                <span className="text-sm text-muted">{formatCurrency(total)}</span>
+              </div>
+            )}
+            {deliveryFee > 0 && (
+              <div className="flex justify-between rounded-xl bg-card px-4 py-2">
+                <span className="text-sm text-muted">🛵 Taxa de entrega</span>
+                <span className="text-sm text-wine">+{formatCurrency(deliveryFee)}</span>
+              </div>
+            )}
             <div className="flex justify-between rounded-xl bg-card px-4 py-3">
               <span className="text-sm font-bold text-foreground">Total</span>
-              <span className="text-sm font-bold text-wine">{formatCurrency(total)}</span>
+              <span className="text-sm font-bold text-wine">{formatCurrency(grandTotal)}</span>
             </div>
           </div>
 
@@ -568,7 +582,7 @@ function CheckoutModal({
             disabled={submitting}
             className="mt-5 w-full rounded-2xl bg-wine py-4 text-base font-bold text-white shadow-lg active:scale-[0.98] transition-transform disabled:opacity-50"
           >
-            {submitting ? "Enviando..." : `Confirmar pedido · ${formatCurrency(total)}`}
+            {submitting ? "Enviando..." : `Confirmar pedido · ${formatCurrency(grandTotal)}`}
           </button>
         </div>
       </div>
