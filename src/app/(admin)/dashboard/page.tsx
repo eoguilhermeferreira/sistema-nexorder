@@ -38,8 +38,8 @@ export default function DashboardPage() {
     setHistLoading(true);
     setHistOrders(null);
     const supabase = createClient();
-    const start = `${date}T00:00:00`;
-    const end = `${date}T23:59:59`;
+    const start = `${date}T00:00:00-03:00`;
+    const end = `${date}T23:59:59-03:00`;
     const { data } = await supabase
       .from("orders")
       .select("*, order_items(*)")
