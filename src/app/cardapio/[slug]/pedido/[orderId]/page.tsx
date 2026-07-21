@@ -57,26 +57,18 @@ export default function PedidoTrackingPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="text-center">
-          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-wine border-t-transparent" />
-          <p className="mt-4 text-sm text-muted">Carregando pedido...</p>
-        </div>
+      <div className="p-8 text-center">
+        <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-wine border-t-transparent" />
+        <p className="mt-4 text-sm text-muted">Carregando pedido...</p>
       </div>
     );
   }
 
-  if (!order) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <p className="text-sm text-muted">Pedido não encontrado.</p>
-      </div>
-    );
-  }
+  if (!order) return <p className="p-8 text-sm text-muted">Pedido não encontrado.</p>;
 
   if (order.status === "cancelado") {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-background px-6 text-center">
+      <div className="p-8 text-center">
         <span className="text-5xl">😔</span>
         <p className="mt-4 text-xl font-semibold text-foreground">Pedido cancelado</p>
         <p className="mt-1 text-sm text-muted">#{order.order_code}</p>
@@ -94,9 +86,9 @@ export default function PedidoTrackingPage() {
   const isDone = order.status === "concluido";
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div className="mx-auto max-w-md px-6 py-8">
       {/* top hero */}
-      <div className="flex flex-col items-center justify-center px-6 pt-16 pb-10 text-center">
+      <div className="flex flex-col items-center pb-8 text-center">
         <div
           className={`flex h-24 w-24 items-center justify-center rounded-full text-5xl shadow-lg transition-all duration-700 ${
             isDone ? "bg-green-500/20" : "bg-wine/10"
@@ -113,7 +105,7 @@ export default function PedidoTrackingPage() {
       </div>
 
       {/* progress steps */}
-      <div className="px-8">
+      <div>
         <div className="relative">
           {steps.map((step, index) => {
             const done = index < currentIndex;
@@ -176,7 +168,7 @@ export default function PedidoTrackingPage() {
       </div>
 
       {/* order summary */}
-      <div className="mx-4 mt-2 rounded-2xl border border-border bg-card p-4">
+      <div className="mt-2 rounded-2xl border border-border bg-card p-4">
         <p className="text-xs font-semibold uppercase tracking-wider text-muted">Resumo do pedido</p>
         <div className="mt-3 space-y-2">
           {(order.order_items ?? []).map((item) => (
