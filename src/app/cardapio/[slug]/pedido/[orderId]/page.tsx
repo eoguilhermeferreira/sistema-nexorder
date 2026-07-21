@@ -88,20 +88,22 @@ export default function PedidoTrackingPage() {
   return (
     <div className="mx-auto max-w-md px-6 py-8">
       {/* top hero */}
-      <div className="flex flex-col items-center pb-8 text-center">
+      <div className="flex items-center gap-4 pb-8">
         <div
-          className={`flex h-24 w-24 items-center justify-center rounded-full text-5xl shadow-lg transition-all duration-700 ${
+          className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-full text-4xl shadow-lg transition-all duration-700 ${
             isDone ? "bg-green-500/20" : "bg-wine/10"
           }`}
           style={{ animation: isDone ? "none" : "pulse 2s ease-in-out infinite" }}
         >
           {currentStep?.emoji ?? "📋"}
         </div>
-        <h1 className="mt-5 text-2xl font-bold text-foreground">
-          {currentStep?.label ?? "Processando..."}
-        </h1>
-        <p className="mt-1 text-sm text-muted">{currentStep?.desc}</p>
-        <p className="mt-3 text-xs text-muted">Pedido #{order.order_code} · {order.customer_name}</p>
+        <div>
+          <p className="text-xs text-muted">Pedido #{order.order_code} · {order.customer_name}</p>
+          <h1 className="mt-0.5 text-xl font-bold text-foreground">
+            {currentStep?.label ?? "Processando..."}
+          </h1>
+          <p className="mt-0.5 text-sm text-muted">{currentStep?.desc}</p>
+        </div>
       </div>
 
       {/* progress steps */}
