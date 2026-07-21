@@ -130,16 +130,19 @@ function OrderDetail({ order, onFinalize }: { order: Order; onFinalize: (id: str
       <p className="text-sm text-muted">{order.customer_name}</p>
       {order.customer_phone && <p className="text-sm text-muted">{order.customer_phone}</p>}
 
-      <ul className="mt-4 space-y-2 text-sm text-muted">
+      <ul className="mt-4 space-y-3 text-sm text-muted">
         {(order.order_items ?? []).map((item) => (
           <li key={item.id}>
-            <p className="text-foreground">{item.quantity}x {item.product_name}{item.size_name ? ` (${item.size_name})` : ""}</p>
+            {item.category_name && (
+              <p className="text-xs font-medium text-muted uppercase tracking-wide">{item.category_name}</p>
+            )}
+            <p className="text-foreground font-medium">{item.quantity}x {item.product_name}{item.size_name ? ` (${item.size_name})` : ""}</p>
             {item.flavors && item.flavors.length > 0 && (
               <p>Sabores: {item.flavors.map((f) => f.name).join(", ")}</p>
             )}
             {item.border_name && <p>Borda: {item.border_name}</p>}
             {item.additions?.length ? <p>+ {(item.additions as unknown as { name: string; qty: number }[]).map((a) => a.qty > 1 ? `${a.name} x${a.qty}` : a.name).join(", ")}</p> : null}
-            {item.removed_ingredients?.length ? <p>- {item.removed_ingredients.join(", ")}</p> : null}
+            {item.removed_ingredients?.length ? <p className="text-red-400">- {item.removed_ingredients.join(", ")}</p> : null}
             {item.notes && <p className="italic">{item.notes}</p>}
           </li>
         ))}

@@ -79,9 +79,21 @@ export default function PedidoTrackingPage() {
         <p className="text-sm font-medium text-foreground">Itens</p>
         <div className="mt-2 space-y-2">
           {(order.order_items ?? []).map((item) => (
-            <div key={item.id} className="flex justify-between text-sm">
-              <span className="text-muted">{item.quantity}x {item.product_name}{item.size_name ? ` (${item.size_name})` : ""}</span>
-              <span className="text-foreground">{formatCurrency(item.price * item.quantity)}</span>
+            <div key={item.id} className="text-sm">
+              {item.category_name && (
+                <p className="text-xs text-muted">{item.category_name}</p>
+              )}
+              <div className="flex justify-between">
+                <span className="text-foreground font-medium">{item.quantity}x {item.product_name}{item.size_name ? ` (${item.size_name})` : ""}</span>
+                <span className="text-muted">{formatCurrency(item.price * item.quantity)}</span>
+              </div>
+              {item.flavors && item.flavors.length > 0 && (
+                <p className="text-xs text-muted">Sabores: {(item.flavors as unknown as { name: string }[]).map((f) => f.name).join(", ")}</p>
+              )}
+              {(item.additions as unknown as { name: string; qty: number }[] | null)?.length ? (
+                <p className="text-xs text-muted">+ {(item.additions as unknown as { name: string; qty: number }[]).map((a) => a.qty > 1 ? `${a.name} x${a.qty}` : a.name).join(", ")}</p>
+              ) : null}
+              {item.notes && <p className="text-xs italic text-muted">{item.notes}</p>}
             </div>
           ))}
         </div>
