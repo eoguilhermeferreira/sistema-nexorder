@@ -86,7 +86,7 @@ export default function PedidoTrackingPage() {
   const isDone = order.status === "concluido";
 
   return (
-    <div className="mx-auto max-w-md px-6 py-8">
+    <div className="mx-auto max-w-md px-6 pt-16 pb-8">
       {/* top hero */}
       <div className="flex items-center gap-4 pb-8">
         <div
