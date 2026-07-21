@@ -73,9 +73,8 @@ export function useStorefront(slug: string) {
           .from("products")
           .select("*, product_sizes(*), product_flavors(flavor_id)")
           .eq("company_id", companyId)
-          .eq("active", true)
           .order("created_at"),
-        supabase.from("flavors").select("*").eq("company_id", companyId).eq("available", true).order("name"),
+        supabase.from("flavors").select("*").eq("company_id", companyId).order("name"),
         supabase.from("addons").select("*").eq("company_id", companyId).eq("active", true).order("name"),
         (supabase as any).from("flavor_size_prices").select("*"),
         (supabase as any).from("addon_size_prices").select("*"),
