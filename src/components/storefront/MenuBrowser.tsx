@@ -134,30 +134,38 @@ export function MenuBrowser({
                 )}
               </div>
               <div className="mt-3 divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
-                {categoryProducts.map((product) => (
-                  <button
-                    key={product.id}
-                    onClick={() => !catUnavailable && setActiveProduct({ product, categoryName: category.name })}
-                    className="flex w-full items-center gap-4 px-4 py-4 text-left active:bg-card-hover"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-foreground">{product.name}</p>
-                      {product.description && (
-                        <p className="mt-0.5 text-xs leading-relaxed text-muted line-clamp-2">
-                          {product.description}
+                {categoryProducts.map((product) => {
+                  const productUnavailable = !product.active || catUnavailable;
+                  return (
+                    <button
+                      key={product.id}
+                      onClick={() => !productUnavailable && setActiveProduct({ product, categoryName: category.name })}
+                      className={`flex w-full items-center gap-4 px-4 py-4 text-left active:bg-card-hover ${productUnavailable ? "opacity-50 cursor-default" : ""}`}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-sm font-medium text-foreground">{product.name}</p>
+                          {!product.active && (
+                            <span className="rounded-full bg-zinc-500/20 px-2 py-0.5 text-xs font-medium text-zinc-400">Indisponível</span>
+                          )}
+                        </div>
+                        {product.description && (
+                          <p className="mt-0.5 text-xs leading-relaxed text-muted line-clamp-2">
+                            {product.description}
+                          </p>
+                        )}
+                        <p className="mt-1.5 text-sm font-semibold text-wine">
+                          {formatCurrency(product.base_price)}
                         </p>
+                      </div>
+                      {product.image_url ? (
+                        <img src={product.image_url} alt={product.name} className="h-16 w-16 shrink-0 rounded-lg object-cover" />
+                      ) : (
+                        <div className="h-16 w-16 shrink-0 rounded-lg bg-card-hover" />
                       )}
-                      <p className="mt-1.5 text-sm font-semibold text-wine">
-                        {formatCurrency(product.base_price)}
-                      </p>
-                    </div>
-                    {product.image_url ? (
-                      <img src={product.image_url} alt={product.name} className="h-16 w-16 shrink-0 rounded-lg object-cover" />
-                    ) : (
-                      <div className="h-16 w-16 shrink-0 rounded-lg bg-card-hover" />
-                    )}
-                  </button>
-                ))}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           );

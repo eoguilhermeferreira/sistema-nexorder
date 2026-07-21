@@ -203,16 +203,19 @@ function CategoriasTab({ companyId }: { companyId: string }) {
 function DisponibilidadeTab({ companyId }: { companyId: string }) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [flavors, setFlavors] = useState<Flavor[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
   async function load() {
     const supabase = createClient();
-    const [catsRes, flavorsRes] = await Promise.all([
+    const [catsRes, flavorsRes, productsRes] = await Promise.all([
       supabase.from("categories").select("*").eq("company_id", companyId).order("display_order"),
       (supabase as any).from("flavors").select("*").eq("company_id", companyId).order("name"),
+      supabase.from("products").select("*").eq("company_id", companyId).order("name"),
     ]);
     setCategories((catsRes.data as unknown as Category[]) ?? []);
     setFlavors((flavorsRes.data as Flavor[]) ?? []);
+    setProducts((productsRes.data as unknown as Product[]) ?? []);
     setLoading(false);
   }
 
@@ -228,65 +231,71 @@ function DisponibilidadeTab({ companyId }: { companyId: string }) {
     load();
   }
 
+  async function toggleProduct(product: Product) {
+    await createClient().from("products").update({ active: !product.active } as any).eq("id", product.id);
+    load();
+  }
+
+  function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
+    return (
+      <button
+        onClick={onToggle}
+        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-colors duration-200 ${on ? "bg-wine" : "bg-border"}`}
+      >
+        <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${on ? "translate-x-6" : "translate-x-1"}`} />
+      </button>
+    );
+  }
+
   if (loading) return <p className="text-sm text-muted">Carregando...</p>;
 
   return (
     <div className="max-w-xl space-y-3">
       <p className="text-sm text-muted">
-        Desative categorias ou sabores que estão temporariamente indisponíveis. Eles continuam visíveis no cardápio do cliente, mas aparecem cinzas com "Indisponível no momento".
+        Desative categorias ou itens que estão temporariamente indisponíveis. Continuam visíveis no cardápio mas aparecem cinzas com "Indisponível no momento".
       </p>
 
       {categories.map((cat) => {
         const catFlavors = flavors.filter((f) => (f as any).category_id === cat.id);
+        const catProducts = products.filter((p) => p.category_id === cat.id);
+        const items = cat.is_pizza ? catFlavors : catProducts;
+
         return (
           <div key={cat.id} className="rounded-xl border border-border bg-card overflow-hidden">
-            {/* category row */}
+            {/* category toggle */}
             <div className="flex items-center justify-between px-4 py-3">
               <div>
                 <p className={`text-sm font-semibold ${!cat.available ? "text-muted line-through" : "text-foreground"}`}>
                   {cat.name}
                 </p>
-                {!cat.available && (
-                  <p className="text-xs text-yellow-500">Categoria inteira desativada</p>
-                )}
+                {!cat.available && <p className="text-xs text-yellow-500">Categoria inteira desativada</p>}
               </div>
-              <button
-                onClick={() => toggleCategory(cat)}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-colors duration-200 ${
-                  cat.available ? "bg-wine" : "bg-border"
-                }`}
-              >
-                <span
-                  className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${
-                    cat.available ? "translate-x-6" : "translate-x-1"
-                  }`}
-                />
-              </button>
+              <Toggle on={cat.available} onToggle={() => toggleCategory(cat)} />
             </div>
 
-            {/* flavors (pizza categories) */}
-            {cat.is_pizza && catFlavors.length > 0 && (
+            {/* individual items */}
+            {items.length > 0 && (
               <div className="border-t border-border divide-y divide-border bg-card-hover">
-                <p className="px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted">Sabores</p>
-                {catFlavors.map((flavor) => (
-                  <div key={flavor.id} className="flex items-center justify-between px-4 py-2.5">
-                    <p className={`text-sm ${!flavor.available ? "text-muted line-through" : "text-foreground"}`}>
-                      {flavor.name}
-                    </p>
-                    <button
-                      onClick={() => toggleFlavor(flavor)}
-                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors duration-200 ${
-                        flavor.available ? "bg-wine" : "bg-border"
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform duration-200 ${
-                          flavor.available ? "translate-x-[18px]" : "translate-x-0.5"
-                        }`}
-                      />
-                    </button>
-                  </div>
-                ))}
+                <p className="px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted">
+                  {cat.is_pizza ? "Sabores" : "Produtos"}
+                </p>
+                {cat.is_pizza
+                  ? catFlavors.map((flavor) => (
+                      <div key={flavor.id} className="flex items-center justify-between px-4 py-2.5">
+                        <p className={`text-sm ${!flavor.available ? "text-muted line-through" : "text-foreground"}`}>
+                          {flavor.name}
+                        </p>
+                        <Toggle on={flavor.available} onToggle={() => toggleFlavor(flavor)} />
+                      </div>
+                    ))
+                  : catProducts.map((product) => (
+                      <div key={product.id} className="flex items-center justify-between px-4 py-2.5">
+                        <p className={`text-sm ${!product.active ? "text-muted line-through" : "text-foreground"}`}>
+                          {product.name}
+                        </p>
+                        <Toggle on={product.active} onToggle={() => toggleProduct(product)} />
+                      </div>
+                    ))}
               </div>
             )}
           </div>
