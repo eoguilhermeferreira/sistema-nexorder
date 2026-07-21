@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { OrderCard } from "@/components/admin/OrderCard";
 import { useCompany } from "@/contexts/CompanyContext";
 import { printOrder } from "@/lib/print";
+import { isToday } from "@/lib/format";
 import type { PrepTimes } from "@/types/domain";
 
 export default function CozinhaPage() {
@@ -13,6 +14,7 @@ export default function CozinhaPage() {
   const { orders, refetch } = useRealtimeOrders(company.id);
   const [prepTimes, setPrepTimes] = useState<PrepTimes | null>(null);
   const [savingPrepTimes, setSavingPrepTimes] = useState(false);
+  const [showConcluidos, setShowConcluidos] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -27,6 +29,9 @@ export default function CozinhaPage() {
   const aguardando = orders.filter((o) => o.status === "aguardando_aceite");
   const emPreparo = orders.filter((o) => o.status === "em_preparo");
   const prontos = orders.filter((o) => o.status === "pronto");
+  const concluidosHoje = orders.filter(
+    (o) => o.status === "concluido" && isToday(o.concluded_at ?? o.created_at)
+  );
 
   const activeOrders = [
     // newest first within each group, aguardando on top
@@ -72,7 +77,7 @@ export default function CozinhaPage() {
     <div>
       <h1 className="text-2xl font-semibold text-foreground">Cozinha</h1>
 
-      <div className="mt-4 grid grid-cols-3 gap-4">
+      <div className="mt-4 grid grid-cols-4 gap-4">
         <div className="rounded-xl border border-border bg-card p-4 text-center">
           <p className="text-sm text-muted">Aguardando aceite</p>
           <p className="mt-1 text-xl font-semibold text-foreground">{aguardando.length}</p>
@@ -85,11 +90,41 @@ export default function CozinhaPage() {
           <p className="text-sm text-muted">Prontos</p>
           <p className="mt-1 text-xl font-semibold text-foreground">{prontos.length}</p>
         </div>
+        <button
+          onClick={() => setShowConcluidos((v) => !v)}
+          className="rounded-xl border border-border bg-card p-4 text-center hover:bg-card-hover transition-colors"
+        >
+          <p className="text-sm text-muted">Concluídos hoje</p>
+          <p className="mt-1 text-xl font-semibold text-foreground">{concluidosHoje.length}</p>
+        </button>
       </div>
 
       <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-4">
         <div className="lg:col-span-3 space-y-3">
-          {activeOrders.length === 0 && <p className="text-sm text-muted">Nenhum pedido em andamento.</p>}
+          {activeOrders.length === 0 && !showConcluidos && (
+            <p className="text-sm text-muted">Nenhum pedido em andamento.</p>
+          )}
+
+          {showConcluidos && (
+            <div className="mb-4">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-base font-semibold text-foreground">Concluídos hoje</h2>
+                <button onClick={() => setShowConcluidos(false)} className="text-xs text-muted hover:text-foreground">Fechar</button>
+              </div>
+              {concluidosHoje.length === 0 ? (
+                <p className="text-sm text-muted">Nenhum pedido concluído hoje.</p>
+              ) : (
+                <div className="space-y-3">
+                  {concluidosHoje
+                    .sort((a, b) => new Date(b.concluded_at ?? b.created_at).getTime() - new Date(a.concluded_at ?? a.created_at).getTime())
+                    .map((order) => (
+                      <OrderCard key={order.id} order={order} />
+                    ))}
+                </div>
+              )}
+              <hr className="my-4 border-border" />
+            </div>
+          )}
 
           {activeOrders.map((order) => (
             <OrderCard key={order.id} order={order}>
