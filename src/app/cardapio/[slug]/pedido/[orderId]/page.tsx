@@ -158,7 +158,7 @@ export default function PedidoTrackingPage() {
                     {step.emoji} {step.label}
                   </p>
                   {active && (
-                    <p className="text-xs text-muted -mt-5">{step.desc}</p>
+                    <p className="text-xs text-muted mt-0.5">{step.desc}</p>
                   )}
                 </div>
               </div>
