@@ -261,11 +261,12 @@ function CheckoutModal({
   const [reference, setReference] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
   const [changeFor, setChangeFor] = useState("");
+  const [needsChange, setNeedsChange] = useState(false);
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  const paymentMethods = (settings?.payment_methods as unknown as string[]) ?? ["dinheiro", "pix"];
+  const paymentMethods = (settings?.payment_methods as unknown as string[]) ?? ["dinheiro", "pix", "cartao_credito", "cartao_debito"];
   const paymentLabels: Record<string, string> = {
     dinheiro: "Dinheiro",
     pix: "Pix",
@@ -299,7 +300,7 @@ function CheckoutModal({
         type,
         status: "aguardando_aceite",
         payment_method: paymentMethod,
-        change_for: paymentMethod === "dinheiro" && changeFor ? Number(changeFor) : null,
+        change_for: paymentMethod === "dinheiro" && needsChange && changeFor ? Number(changeFor) : null,
         total: grandTotal,
         notes: notes.trim() || null,
       })
@@ -551,15 +552,36 @@ function CheckoutModal({
               </div>
             </div>
 
-            {paymentMethod === "dinheiro" && settings?.ask_change_for_cash && (
-              <input
-                value={changeFor}
-                onChange={(e) => setChangeFor(e.target.value)}
-                type="number"
-                inputMode="decimal"
-                placeholder="Troco para quanto?"
-                className={inputCls}
-              />
+            {paymentMethod === "dinheiro" && (
+              <div className="space-y-3">
+                <p className="text-sm font-semibold text-foreground">Precisa de troco?</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => { setNeedsChange(false); setChangeFor(""); }}
+                    className={`rounded-xl py-3 text-sm font-semibold transition-colors ${!needsChange ? "bg-wine text-white" : "bg-card text-muted"}`}
+                  >
+                    Não, obrigado
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNeedsChange(true)}
+                    className={`rounded-xl py-3 text-sm font-semibold transition-colors ${needsChange ? "bg-wine text-white" : "bg-card text-muted"}`}
+                  >
+                    Sim, preciso
+                  </button>
+                </div>
+                {needsChange && (
+                  <input
+                    value={changeFor}
+                    onChange={(e) => setChangeFor(e.target.value)}
+                    type="number"
+                    inputMode="decimal"
+                    placeholder="Troco para quanto? (R$)"
+                    className={inputCls}
+                  />
+                )}
+              </div>
             )}
 
             <textarea
