@@ -6,13 +6,22 @@ import { createClient } from "@/lib/supabase/client";
 import { StatCard } from "@/components/admin/StatCard";
 import { OrderCard } from "@/components/admin/OrderCard";
 import { useCompany } from "@/contexts/CompanyContext";
-import { formatCurrency, isToday } from "@/lib/format";
-import type { PrepTimes } from "@/types/domain";
+import { formatCurrency, formatTime, isToday } from "@/lib/format";
+import type { Order, PrepTimes } from "@/types/domain";
+
+function todayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
 
 export default function DashboardPage() {
   const company = useCompany();
   const { orders, loading } = useRealtimeOrders(company.id);
   const [prepTimes, setPrepTimes] = useState<PrepTimes | null>(null);
+
+  // history lookup
+  const [histDate, setHistDate] = useState("");
+  const [histOrders, setHistOrders] = useState<Order[] | null>(null);
+  const [histLoading, setHistLoading] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -24,6 +33,25 @@ export default function DashboardPage() {
       .then(({ data }) => setPrepTimes(data));
   }, [company.id]);
 
+  async function loadHistory(date: string) {
+    if (!date) return;
+    setHistLoading(true);
+    setHistOrders(null);
+    const supabase = createClient();
+    const start = `${date}T00:00:00`;
+    const end = `${date}T23:59:59`;
+    const { data } = await supabase
+      .from("orders")
+      .select("*, order_items(*)")
+      .eq("company_id", company.id)
+      .gte("created_at", start)
+      .lte("created_at", end)
+      .neq("status", "cancelado")
+      .order("created_at", { ascending: false });
+    setHistOrders((data as unknown as Order[]) ?? []);
+    setHistLoading(false);
+  }
+
   const todayOrders = orders.filter((o) => isToday(o.created_at));
   const emPreparo = orders.filter((o) => o.status === "em_preparo");
   const prontos = orders.filter((o) => o.status === "pronto");
@@ -34,6 +62,11 @@ export default function DashboardPage() {
     .reduce((sum, o) => sum + o.total, 0);
 
   const recentOrders = [...orders].reverse().slice(0, 8);
+
+  const histFaturamento = (histOrders ?? []).reduce((sum, o) => sum + o.total, 0);
+  const histLabel = histDate
+    ? new Date(`${histDate}T12:00:00`).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })
+    : "";
 
   return (
     <div>
@@ -48,6 +81,71 @@ export default function DashboardPage() {
         <StatCard label="Mesas Ocupadas" value={mesasOcupadas} />
         <StatCard label="Faturamento Hoje" value={formatCurrency(faturamentoHoje)} />
       </div>
+
+      {/* history date picker */}
+      <div className="mt-6 flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
+        <span className="text-sm font-medium text-foreground shrink-0">📅 Ver faturamento de outro dia:</span>
+        <input
+          type="date"
+          max={todayStr()}
+          value={histDate}
+          onChange={(e) => {
+            setHistDate(e.target.value);
+            setHistOrders(null);
+          }}
+          className="rounded-lg border border-border bg-card-hover px-3 py-1.5 text-sm text-foreground"
+        />
+        <button
+          onClick={() => loadHistory(histDate)}
+          disabled={!histDate || histLoading}
+          className="rounded-lg bg-wine px-4 py-1.5 text-sm font-medium text-white hover:bg-wine-hover disabled:opacity-50"
+        >
+          {histLoading ? "Buscando..." : "Buscar"}
+        </button>
+        {histDate && (
+          <button
+            onClick={() => { setHistDate(""); setHistOrders(null); }}
+            className="text-xs text-muted hover:text-foreground"
+          >
+            Limpar
+          </button>
+        )}
+      </div>
+
+      {/* history result */}
+      {histOrders !== null && (
+        <div className="mt-4 rounded-xl border border-border bg-card p-4">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div>
+              <p className="text-sm font-semibold text-foreground">{histLabel}</p>
+              <p className="text-xs text-muted">{histOrders.length} pedido(s) concluído(s)</p>
+            </div>
+            <p className="text-xl font-bold text-wine">{formatCurrency(histFaturamento)}</p>
+          </div>
+
+          {histOrders.length > 0 && (
+            <div className="mt-4 divide-y divide-border">
+              {histOrders.map((order) => (
+                <div key={order.id} className="flex items-center justify-between py-2.5 text-sm">
+                  <div>
+                    <span className="font-medium text-foreground">#{order.order_code}</span>
+                    <span className="ml-2 text-muted">{order.customer_name}</span>
+                    <span className="ml-2 text-xs text-muted">{formatTime(order.created_at)}</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-muted capitalize">{order.type}</span>
+                    <span className="font-semibold text-foreground">{formatCurrency(order.total)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {histOrders.length === 0 && (
+            <p className="mt-3 text-sm text-muted">Nenhum pedido neste dia.</p>
+          )}
+        </div>
+      )}
 
       <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
