@@ -57,6 +57,11 @@ export default function MesasPage() {
 
   async function closeTable(table: TableRestaurant) {
     const supabase = createClient();
+    await supabase
+      .from("orders")
+      .update({ status: "concluido", concluded_at: new Date().toISOString() })
+      .eq("table_id", table.id)
+      .in("status", ["aguardando_aceite", "em_preparo", "pronto"]);
     await supabase.from("table_customers").delete().eq("table_id", table.id);
     await supabase.from("tables_restaurant").update({ status: "livre" }).eq("id", table.id);
     refetch();

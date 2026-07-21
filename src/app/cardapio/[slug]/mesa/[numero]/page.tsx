@@ -80,7 +80,6 @@ function MesaContent({ storefront, numero }: { storefront: ReturnType<typeof use
       .select()
       .single();
     if (created) {
-      await supabase.from("tables_restaurant").update({ status: "ocupada" }).eq("id", tableId);
       setCustomer(created as unknown as TableCustomer);
       window.localStorage.setItem(`comanda:${company.id}:mesa:${numero}`, created.id);
     }
@@ -108,6 +107,7 @@ function MesaContent({ storefront, numero }: { storefront: ReturnType<typeof use
       .single();
 
     if (order) {
+      await supabase.from("tables_restaurant").update({ status: "ocupada" }).eq("id", tableId);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await supabase.from("order_items").insert(
         items.map((item) => ({
