@@ -89,7 +89,8 @@ function MesaContent({ storefront, numero }: { storefront: ReturnType<typeof use
     if (!company || !tableId || !customer || items.length === 0) return;
     setSending(true);
     const supabase = createClient();
-    const orderCode = Math.floor(1000 + Math.random() * 9000).toString();
+    const { data: codeData } = await (supabase as any).rpc("next_order_code", { p_company_id: company.id, p_order_type: "mesa" });
+    const orderCode = (codeData as string) ?? "0001";
 
     const { data: order } = await supabase
       .from("orders")
