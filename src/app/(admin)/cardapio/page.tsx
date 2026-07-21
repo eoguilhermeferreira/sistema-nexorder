@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { formatCurrency } from "@/lib/format";
 import type { Category, CategorySize, Addon, Flavor, Product, FlavorSizePrice } from "@/types/domain";
 
-type Tab = "categorias" | "adicionais" | "produtos";
+type Tab = "categorias" | "adicionais" | "produtos" | "disponibilidade";
 
 export default function CardapioPage() {
   const company = useCompany();
@@ -54,7 +54,7 @@ export default function CardapioPage() {
       </div>
 
       <div className="mt-6 flex gap-1 rounded-lg bg-card-hover p-1 w-fit">
-        {(["categorias", "adicionais", "produtos"] as Tab[]).map((t) => (
+        {(["categorias", "adicionais", "produtos", "disponibilidade"] as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -62,7 +62,7 @@ export default function CardapioPage() {
               tab === t ? "bg-card text-foreground shadow-sm" : "text-muted hover:text-foreground"
             }`}
           >
-            {t === "categorias" ? "Categorias" : t === "adicionais" ? "Adicionais" : "Produtos"}
+            {t === "categorias" ? "Categorias" : t === "adicionais" ? "Adicionais" : t === "produtos" ? "Produtos" : "Disponibilidade"}
           </button>
         ))}
       </div>
@@ -71,6 +71,7 @@ export default function CardapioPage() {
         {tab === "categorias" && <CategoriasTab companyId={company.id} />}
         {tab === "adicionais" && <AdicionaisTab companyId={company.id} />}
         {tab === "produtos" && <ProdutosTab companyId={company.id} />}
+        {tab === "disponibilidade" && <DisponibilidadeTab companyId={company.id} />}
       </div>
     </div>
   );
@@ -193,6 +194,106 @@ function CategoriasTab({ companyId }: { companyId: string }) {
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+// ─── Disponibilidade Tab ──────────────────────────────────────────────────────
+
+function DisponibilidadeTab({ companyId }: { companyId: string }) {
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [flavors, setFlavors] = useState<Flavor[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  async function load() {
+    const supabase = createClient();
+    const [catsRes, flavorsRes] = await Promise.all([
+      supabase.from("categories").select("*").eq("company_id", companyId).order("display_order"),
+      (supabase as any).from("flavors").select("*").eq("company_id", companyId).order("name"),
+    ]);
+    setCategories((catsRes.data as unknown as Category[]) ?? []);
+    setFlavors((flavorsRes.data as Flavor[]) ?? []);
+    setLoading(false);
+  }
+
+  useEffect(() => { load(); }, [companyId]);
+
+  async function toggleCategory(cat: Category) {
+    await (createClient() as any).from("categories").update({ available: !cat.available }).eq("id", cat.id);
+    load();
+  }
+
+  async function toggleFlavor(flavor: Flavor) {
+    await (createClient() as any).from("flavors").update({ available: !flavor.available }).eq("id", flavor.id);
+    load();
+  }
+
+  if (loading) return <p className="text-sm text-muted">Carregando...</p>;
+
+  return (
+    <div className="max-w-xl space-y-3">
+      <p className="text-sm text-muted">
+        Desative categorias ou sabores que estão temporariamente indisponíveis. Eles continuam visíveis no cardápio do cliente, mas aparecem cinzas com "Indisponível no momento".
+      </p>
+
+      {categories.map((cat) => {
+        const catFlavors = flavors.filter((f) => (f as any).category_id === cat.id);
+        return (
+          <div key={cat.id} className="rounded-xl border border-border bg-card overflow-hidden">
+            {/* category row */}
+            <div className="flex items-center justify-between px-4 py-3">
+              <div>
+                <p className={`text-sm font-semibold ${!cat.available ? "text-muted line-through" : "text-foreground"}`}>
+                  {cat.name}
+                </p>
+                {!cat.available && (
+                  <p className="text-xs text-yellow-500">Categoria inteira desativada</p>
+                )}
+              </div>
+              <button
+                onClick={() => toggleCategory(cat)}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-colors duration-200 ${
+                  cat.available ? "bg-wine" : "bg-border"
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ${
+                    cat.available ? "translate-x-6" : "translate-x-1"
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* flavors (pizza categories) */}
+            {cat.is_pizza && catFlavors.length > 0 && (
+              <div className="border-t border-border divide-y divide-border bg-card-hover">
+                <p className="px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted">Sabores</p>
+                {catFlavors.map((flavor) => (
+                  <div key={flavor.id} className="flex items-center justify-between px-4 py-2.5">
+                    <p className={`text-sm ${!flavor.available ? "text-muted line-through" : "text-foreground"}`}>
+                      {flavor.name}
+                    </p>
+                    <button
+                      onClick={() => toggleFlavor(flavor)}
+                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors duration-200 ${
+                        flavor.available ? "bg-wine" : "bg-border"
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform duration-200 ${
+                          flavor.available ? "translate-x-[18px]" : "translate-x-0.5"
+                        }`}
+                      />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      {categories.length === 0 && <p className="text-sm text-muted">Nenhuma categoria cadastrada.</p>}
     </div>
   );
 }

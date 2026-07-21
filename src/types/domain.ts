@@ -73,6 +73,7 @@ export interface Category {
   icon: string | null;
   display_order: number;
   active: boolean;
+  available: boolean;
   is_pizza: boolean;
   pricing_mode: "fixed" | "per_flavor";
   created_at: string | null;

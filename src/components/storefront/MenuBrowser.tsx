@@ -104,9 +104,15 @@ export function MenuBrowser({
 
           if (category.is_pizza) {
             if (categoryFlavors.length === 0) return null;
+            const catUnavailable = category.available === false;
             return (
-              <div key={category.id} ref={(el) => { sectionRefs.current[category.id] = el; }} data-cat-id={category.id}>
-                <h2 className="text-base font-bold text-foreground">{category.name}</h2>
+              <div key={category.id} ref={(el) => { sectionRefs.current[category.id] = el; }} data-cat-id={category.id} className={catUnavailable ? "opacity-60 pointer-events-none" : ""}>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base font-bold text-foreground">{category.name}</h2>
+                  {catUnavailable && (
+                    <span className="rounded-full bg-zinc-500/20 px-2 py-0.5 text-xs font-medium text-zinc-400">Indisponível no momento</span>
+                  )}
+                </div>
                 <PizzaSection
                   category={category}
                   flavors={categoryFlavors}
@@ -118,14 +124,20 @@ export function MenuBrowser({
           }
 
           if (categoryProducts.length === 0) return null;
+          const catUnavailable = category.available === false;
           return (
-            <div key={category.id} ref={(el) => { sectionRefs.current[category.id] = el; }} data-cat-id={category.id}>
-              <h2 className="text-base font-bold text-foreground">{category.name}</h2>
+            <div key={category.id} ref={(el) => { sectionRefs.current[category.id] = el; }} data-cat-id={category.id} className={catUnavailable ? "opacity-60 pointer-events-none" : ""}>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-bold text-foreground">{category.name}</h2>
+                {catUnavailable && (
+                  <span className="rounded-full bg-zinc-500/20 px-2 py-0.5 text-xs font-medium text-zinc-400">Indisponível no momento</span>
+                )}
+              </div>
               <div className="mt-3 divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
                 {categoryProducts.map((product) => (
                   <button
                     key={product.id}
-                    onClick={() => setActiveProduct({ product, categoryName: category.name })}
+                    onClick={() => !catUnavailable && setActiveProduct({ product, categoryName: category.name })}
                     className="flex w-full items-center gap-4 px-4 py-4 text-left active:bg-card-hover"
                   >
                     <div className="min-w-0 flex-1">
@@ -409,7 +421,8 @@ function PizzaSection({
               {list.map((flavor) => {
           const isSelected = selectedFlavorIds.includes(flavor.id);
           const ingredients = (flavor.ingredients ?? []).map((i) => i.name).join(", ");
-          const isDisabled = !isSelected && selectedFlavorIds.length >= maxFlavors;
+          const flavorUnavailable = flavor.available === false;
+          const isDisabled = flavorUnavailable || (!isSelected && selectedFlavorIds.length >= maxFlavors);
           const flavorPrice = isPerFlavor && selectedSize
             ? flavorSizePrices.find((p) => p.flavor_id === flavor.id && p.size_id === selectedSize.id)?.price
             : undefined;
@@ -422,7 +435,7 @@ function PizzaSection({
           const hasAddons = addons.length > 0;
 
           return (
-            <div key={flavor.id} className={isDisabled ? "opacity-40" : ""}>
+            <div key={flavor.id} className={flavorUnavailable ? "opacity-50 pointer-events-none" : isDisabled ? "opacity-40" : ""}>
               {/* flavor row */}
               <div className={`flex items-center gap-3 px-4 py-4 ${isSelected ? "bg-wine/5" : ""}`}>
                 {/* select toggle */}
@@ -442,6 +455,9 @@ function PizzaSection({
                 >
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="text-sm font-medium text-foreground">{flavor.name}</p>
+                    {flavorUnavailable && (
+                      <span className="rounded-full bg-zinc-500/20 px-2 py-0.5 text-xs font-medium text-zinc-400">Indisponível</span>
+                    )}
                     {flavorPrice != null && (
                       <span className="text-xs font-semibold text-wine">{formatCurrency(flavorPrice)}</span>
                     )}
