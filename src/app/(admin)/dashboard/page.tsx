@@ -7,6 +7,7 @@ import { StatCard } from "@/components/admin/StatCard";
 import { OrderCard } from "@/components/admin/OrderCard";
 import { useCompany } from "@/contexts/CompanyContext";
 import { formatCurrency, formatTime, isToday } from "@/lib/format";
+import { printOrder } from "@/lib/print";
 import type { Order, PrepTimes } from "@/types/domain";
 
 function todayStr() {
@@ -62,6 +63,7 @@ export default function DashboardPage() {
     .reduce((sum, o) => sum + o.total, 0);
 
   const recentOrders = [...orders].reverse().slice(0, 8);
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
 
   const histFaturamento = (histOrders ?? []).reduce((sum, o) => sum + o.total, 0);
   const histLabel = histDate
@@ -156,7 +158,18 @@ export default function DashboardPage() {
               <p className="text-sm text-muted">Nenhum pedido ainda.</p>
             )}
             {recentOrders.map((order) => (
-              <OrderCard key={order.id} order={order} />
+              <div key={order.id} onClick={() => setExpandedOrderId(expandedOrderId === order.id ? null : order.id)} className="cursor-pointer">
+                <OrderCard order={order}>
+                  {expandedOrderId === order.id && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); printOrder(order); }}
+                      className="flex items-center gap-2 rounded-lg border border-border bg-card-hover px-4 py-2 text-sm font-medium text-foreground hover:bg-border"
+                    >
+                      🖨️ Reimprimir pedido
+                    </button>
+                  )}
+                </OrderCard>
+              </div>
             ))}
           </div>
         </div>
