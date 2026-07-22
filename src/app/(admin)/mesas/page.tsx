@@ -179,7 +179,7 @@ export default function MesasPage() {
                 </button>
               </div>
 
-              {selectedTable.status === "ocupada" && (
+              {(selectedTable.status === "ocupada" || (selectedTable.table_customers ?? []).length > 0) && (
                 <button
                   onClick={() => closeTable(selectedTable)}
                   disabled={(selectedTable.table_customers ?? []).some(
