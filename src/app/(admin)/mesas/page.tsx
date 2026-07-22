@@ -182,7 +182,9 @@ export default function MesasPage() {
               {selectedTable.status === "ocupada" && (
                 <button
                   onClick={() => closeTable(selectedTable)}
-                  disabled={(selectedTable.table_customers ?? []).some((c) => c.payment_status !== "pago")}
+                  disabled={(selectedTable.table_customers ?? []).some(
+                    (c) => c.payment_status !== "pago" && (c.subtotal ?? 0) > 0
+                  )}
                   className="mt-4 w-full rounded-lg bg-card-hover px-4 py-2 text-sm font-medium text-foreground hover:bg-border disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Fechar Mesa
