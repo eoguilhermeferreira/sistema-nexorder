@@ -312,11 +312,21 @@ function PizzaSection({
   }
 
   // resolve addon price: use size-based price if available, else flat price
+  // fallback to whichever side (half/whole) is set when only one is filled
   function getAddonPrice(addonId: string): number {
     if (!selectedSize) return addons.find((a) => a.id === addonId)?.price ?? 0;
     const asp = addonSizePrices.find((p) => p.addon_id === addonId && p.size_id === selectedSize.id);
-    if (asp) return maxFlavors > 1 ? asp.price_half : asp.price_whole;
+    if (asp) {
+      if (maxFlavors > 1) return asp.price_half > 0 ? asp.price_half : asp.price_whole;
+      return asp.price_whole > 0 ? asp.price_whole : asp.price_half;
+    }
     return addons.find((a) => a.id === addonId)?.price ?? 0;
+  }
+
+  // get the asp entry for display purposes
+  function getAddonAsp(addonId: string) {
+    if (!selectedSize) return null;
+    return addonSizePrices.find((p) => p.addon_id === addonId && p.size_id === selectedSize.id) ?? null;
   }
 
   // build addons array preserving which flavor each addon belongs to
@@ -517,11 +527,20 @@ function PizzaSection({
                     {addons.map((addon) => {
                       const qty = flavorAddonQtys[addon.id] ?? 0;
                       const addonPrice = getAddonPrice(addon.id);
+                      const asp = getAddonAsp(addon.id);
+                      const showBoth = asp && asp.price_half > 0 && asp.price_whole > 0;
                       return (
                         <div key={addon.id} className="flex items-center justify-between">
                           <div>
                             <p className="text-sm text-foreground">{addon.name}</p>
-                            {addonPrice > 0 && <p className="text-xs text-wine">+{formatCurrency(addonPrice)}</p>}
+                            {showBoth ? (
+                              <div className="mt-0.5 text-xs text-wine leading-4">
+                                <p>Metade: +{formatCurrency(asp.price_half)}</p>
+                                <p>Inteira: +{formatCurrency(asp.price_whole)}</p>
+                              </div>
+                            ) : addonPrice > 0 ? (
+                              <p className="text-xs text-wine">+{formatCurrency(addonPrice)}</p>
+                            ) : null}
                           </div>
                           <div className="flex items-center gap-2">
                             {qty > 0 && (
