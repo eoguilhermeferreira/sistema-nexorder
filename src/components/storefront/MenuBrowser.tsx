@@ -294,19 +294,21 @@ function PizzaSection({
     });
   }
 
-  function incAddon(flavorId: string, addonId: string) {
+  function incAddon(flavorId: string, addonId: string, mode?: "half" | "whole") {
+    const key = mode ? `${addonId}:${mode}` : addonId;
     setAddonQtys((prev) => ({
       ...prev,
-      [flavorId]: { ...(prev[flavorId] ?? {}), [addonId]: ((prev[flavorId] ?? {})[addonId] ?? 0) + 1 },
+      [flavorId]: { ...(prev[flavorId] ?? {}), [key]: ((prev[flavorId] ?? {})[key] ?? 0) + 1 },
     }));
   }
 
-  function decAddon(flavorId: string, addonId: string) {
+  function decAddon(flavorId: string, addonId: string, mode?: "half" | "whole") {
+    const key = mode ? `${addonId}:${mode}` : addonId;
     setAddonQtys((prev) => {
       const flavorQtys = { ...(prev[flavorId] ?? {}) };
-      const next = (flavorQtys[addonId] ?? 0) - 1;
-      if (next <= 0) delete flavorQtys[addonId];
-      else flavorQtys[addonId] = next;
+      const next = (flavorQtys[key] ?? 0) - 1;
+      if (next <= 0) delete flavorQtys[key];
+      else flavorQtys[key] = next;
       return { ...prev, [flavorId]: flavorQtys };
     });
   }
@@ -334,11 +336,19 @@ function PizzaSection({
     const arr: import("@/types/domain").AddonSelection[] = [];
     for (const [flavorId, flavorQtys] of Object.entries(addonQtys)) {
       const flavor = flavors.find((f) => f.id === flavorId);
-      for (const [addonId, qty] of Object.entries(flavorQtys)) {
+      for (const [key, qty] of Object.entries(flavorQtys)) {
         if (qty <= 0) continue;
+        const [addonId, mode] = key.split(":") as [string, "half" | "whole" | undefined];
         const a = addons.find((x) => x.id === addonId);
         if (!a) continue;
-        arr.push({ id: addonId, name: a.name, price: getAddonPrice(addonId), qty, flavor_name: flavor?.name ?? null });
+        let price: number;
+        if (mode && selectedSize) {
+          const asp = addonSizePrices.find((p) => p.addon_id === addonId && p.size_id === selectedSize.id);
+          price = mode === "half" ? (asp?.price_half ?? a.price) : (asp?.price_whole ?? a.price);
+        } else {
+          price = getAddonPrice(addonId);
+        }
+        arr.push({ id: addonId, name: a.name, price, qty, mode: mode ?? null, flavor_name: flavor?.name ?? null });
       }
     }
     return arr;
@@ -457,8 +467,14 @@ function PizzaSection({
             : undefined;
           const isExpanded = expandedFlavorIds.has(flavor.id);
           const flavorAddonQtys = addonQtys[flavor.id] ?? {};
-          const flavorAddonsTotal = Object.entries(flavorAddonQtys).reduce((sum, [id, qty]) => {
-            return sum + getAddonPrice(id) * qty;
+          const flavorAddonsTotal = Object.entries(flavorAddonQtys).reduce((sum, [key, qty]) => {
+            const [addonId, mode] = key.split(":") as [string, "half" | "whole" | undefined];
+            if (mode && selectedSize) {
+              const asp = addonSizePrices.find((p) => p.addon_id === addonId && p.size_id === selectedSize.id);
+              const p = mode === "half" ? (asp?.price_half ?? 0) : (asp?.price_whole ?? 0);
+              return sum + p * qty;
+            }
+            return sum + getAddonPrice(addonId) * qty;
           }, 0);
           const hasAddons = addons.length > 0;
 
@@ -525,39 +541,63 @@ function PizzaSection({
                   </p>
                   <div className="space-y-2">
                     {addons.map((addon) => {
-                      const qty = flavorAddonQtys[addon.id] ?? 0;
-                      const addonPrice = getAddonPrice(addon.id);
                       const asp = getAddonAsp(addon.id);
                       const showBoth = asp && asp.price_half > 0 && asp.price_whole > 0;
+
+                      if (showBoth) {
+                        // two separate rows: Metade and Inteiro
+                        return (
+                          <div key={addon.id} className="space-y-1.5">
+                            <p className="text-sm font-medium text-foreground">{addon.name}</p>
+                            {(["half", "whole"] as const).map((mode) => {
+                              const modePrice = mode === "half" ? asp.price_half : asp.price_whole;
+                              const modeKey = `${addon.id}:${mode}`;
+                              const modeQty = flavorAddonQtys[modeKey] ?? 0;
+                              const label = mode === "half" ? "Metade" : "Inteiro";
+                              return (
+                                <div key={mode} className="flex items-center justify-between pl-2">
+                                  <span className="text-xs text-wine">{label}: +{formatCurrency(modePrice)}</span>
+                                  <div className="flex items-center gap-2">
+                                    {modeQty > 0 && (
+                                      <button
+                                        onClick={() => decAddon(flavor.id, addon.id, mode)}
+                                        className="flex h-7 w-7 items-center justify-center rounded-full border border-border bg-card text-foreground active:bg-card-hover"
+                                      >−</button>
+                                    )}
+                                    {modeQty > 0 && <span className="w-4 text-center text-sm font-medium">{modeQty}</span>}
+                                    <button
+                                      onClick={() => incAddon(flavor.id, addon.id, mode)}
+                                      className="flex h-7 w-7 items-center justify-center rounded-full border border-wine bg-wine/10 text-wine active:bg-wine/20"
+                                    >+</button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      }
+
+                      // single price row
+                      const addonPrice = getAddonPrice(addon.id);
+                      const qty = flavorAddonQtys[addon.id] ?? 0;
                       return (
                         <div key={addon.id} className="flex items-center justify-between">
                           <div>
                             <p className="text-sm text-foreground">{addon.name}</p>
-                            {showBoth ? (
-                              <div className="mt-0.5 text-xs text-wine leading-4">
-                                <p>Metade: +{formatCurrency(asp.price_half)}</p>
-                                <p>Inteira: +{formatCurrency(asp.price_whole)}</p>
-                              </div>
-                            ) : addonPrice > 0 ? (
-                              <p className="text-xs text-wine">+{formatCurrency(addonPrice)}</p>
-                            ) : null}
+                            {addonPrice > 0 && <p className="text-xs text-wine">+{formatCurrency(addonPrice)}</p>}
                           </div>
                           <div className="flex items-center gap-2">
                             {qty > 0 && (
                               <button
                                 onClick={() => decAddon(flavor.id, addon.id)}
                                 className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-card text-foreground active:bg-card-hover"
-                              >
-                                −
-                              </button>
+                              >−</button>
                             )}
                             {qty > 0 && <span className="w-4 text-center text-sm font-medium">{qty}</span>}
                             <button
                               onClick={() => incAddon(flavor.id, addon.id)}
                               className="flex h-8 w-8 items-center justify-center rounded-full border border-wine bg-wine/10 text-wine active:bg-wine/20"
-                            >
-                              +
-                            </button>
+                            >+</button>
                           </div>
                         </div>
                       );

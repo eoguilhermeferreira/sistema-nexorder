@@ -74,7 +74,10 @@ export function OrderCard({ order, children }: OrderCardProps) {
                             • {f.name}
                             {flavorAddons.length > 0 && (
                               <span className="ml-1 text-wine">
-                                ({flavorAddons.map((a) => (a.qty > 1 ? `${a.name} x${a.qty}` : a.name)).join(", ")})
+                                ({flavorAddons.map((a) => {
+                                  const modeLabel = a.mode === "half" ? " (metade)" : a.mode === "whole" ? " (inteiro)" : "";
+                                  return (a.qty > 1 ? `${a.name}${modeLabel} x${a.qty}` : `${a.name}${modeLabel}`);
+                                }).join(", ")})
                               </span>
                             )}
                           </p>
@@ -87,7 +90,10 @@ export function OrderCard({ order, children }: OrderCardProps) {
                 {/* addons without flavor association (non-pizza products) */}
                 {!hasPerFlavorAddons && item.additions && item.additions.length > 0 && (
                   <p className="mt-0.5 text-xs text-wine">
-                    + {item.additions.map((a) => (a.qty > 1 ? `${a.name} x${a.qty}` : a.name)).join(", ")}
+                    + {item.additions.map((a) => {
+                      const modeLabel = a.mode === "half" ? " (metade)" : a.mode === "whole" ? " (inteiro)" : "";
+                      return a.qty > 1 ? `${a.name}${modeLabel} x${a.qty}` : `${a.name}${modeLabel}`;
+                    }).join(", ")}
                   </p>
                 )}
 

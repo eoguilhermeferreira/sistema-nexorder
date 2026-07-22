@@ -23,7 +23,10 @@ export function printOrder(order: Order) {
             const addonText =
               flavorAddons.length > 0
                 ? ` <span style="color:#111;font-weight:600;">(${flavorAddons
-                    .map((a) => (a.qty > 1 ? `${a.name} x${a.qty}` : a.name))
+                    .map((a) => {
+                      const modeLabel = a.mode === "half" ? " (metade)" : a.mode === "whole" ? " (inteiro)" : "";
+                      return a.qty > 1 ? `${a.name}${modeLabel} x${a.qty}` : `${a.name}${modeLabel}`;
+                    })
                     .join(", ")})</span>`
                 : "";
             return `<div style="margin-left:12px;color:#111;font-weight:600;">• ${f.name}${addonText}</div>`;
@@ -36,7 +39,10 @@ export function printOrder(order: Order) {
       const genericAddonsPart =
         !hasPerFlavorAddons && item.additions && item.additions.length > 0
           ? `<div style="margin-left:12px;color:#111;font-weight:600;">+ ${item.additions
-              .map((a) => (a.qty > 1 ? `${a.name} x${a.qty}` : a.name))
+              .map((a) => {
+                const modeLabel = a.mode === "half" ? " (metade)" : a.mode === "whole" ? " (inteiro)" : "";
+                return a.qty > 1 ? `${a.name}${modeLabel} x${a.qty}` : `${a.name}${modeLabel}`;
+              })
               .join(", ")}</div>`
           : "";
 
