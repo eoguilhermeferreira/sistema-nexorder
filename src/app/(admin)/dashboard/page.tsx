@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRealtimeOrders } from "@/lib/hooks/useRealtimeOrders";
 import { createClient } from "@/lib/supabase/client";
 import { StatCard } from "@/components/admin/StatCard";
@@ -10,8 +10,23 @@ import { formatCurrency, formatTime, isToday } from "@/lib/format";
 import { printOrder } from "@/lib/print";
 import type { Order, PrepTimes } from "@/types/domain";
 
+interface CaixaSession {
+  id: string;
+  company_id: string;
+  opened_at: string;
+  closed_at: string | null;
+  faturamento: number | null;
+}
+
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
+}
+
+function formatDateTime(iso: string) {
+  return new Date(iso).toLocaleString("pt-BR", {
+    day: "2-digit", month: "2-digit", year: "numeric",
+    hour: "2-digit", minute: "2-digit",
+  });
 }
 
 export default function DashboardPage() {
@@ -19,12 +34,33 @@ export default function DashboardPage() {
   const { orders, loading } = useRealtimeOrders(company.id);
   const [prepTimes, setPrepTimes] = useState<PrepTimes | null>(null);
 
+  // caixa
+  const [caixa, setCaixa] = useState<CaixaSession | null | undefined>(undefined); // undefined = loading
+  const [caixaLoading, setCaixaLoading] = useState(false);
+  const [showCloseSummary, setShowCloseSummary] = useState<{ faturamento: number; pedidos: number } | null>(null);
+
   // history lookup
   const [histDate, setHistDate] = useState("");
   const [histOrders, setHistOrders] = useState<Order[] | null>(null);
   const [histLoading, setHistLoading] = useState(false);
 
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
+
+  const fetchCaixa = useCallback(async () => {
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("caixa_sessions")
+      .select("*")
+      .eq("company_id", company.id)
+      .is("closed_at", null)
+      .order("opened_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    setCaixa((data as CaixaSession) ?? null);
+  }, [company.id]);
+
   useEffect(() => {
+    fetchCaixa();
     const supabase = createClient();
     supabase
       .from("prep_times")
@@ -32,7 +68,40 @@ export default function DashboardPage() {
       .eq("company_id", company.id)
       .single()
       .then(({ data }) => setPrepTimes(data));
-  }, [company.id]);
+  }, [company.id, fetchCaixa]);
+
+  async function abrirCaixa() {
+    setCaixaLoading(true);
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("caixa_sessions")
+      .insert({ company_id: company.id })
+      .select()
+      .single();
+    setCaixa(data as CaixaSession);
+    setCaixaLoading(false);
+  }
+
+  async function fecharCaixa() {
+    if (!caixa) return;
+    setCaixaLoading(true);
+
+    // calc faturamento from orders since opening
+    const sessionOrders = orders.filter(
+      (o) => o.status !== "cancelado" && new Date(o.created_at) >= new Date(caixa.opened_at)
+    );
+    const fat = sessionOrders.reduce((s, o) => s + o.total, 0);
+
+    const supabase = createClient();
+    await supabase
+      .from("caixa_sessions")
+      .update({ closed_at: new Date().toISOString(), faturamento: fat })
+      .eq("id", caixa.id);
+
+    setShowCloseSummary({ faturamento: fat, pedidos: sessionOrders.length });
+    setCaixa(null);
+    setCaixaLoading(false);
+  }
 
   async function loadHistory(date: string) {
     if (!date) return;
@@ -53,48 +122,104 @@ export default function DashboardPage() {
     setHistLoading(false);
   }
 
+  // orders filtered to current caixa session
+  const sessionOrders = caixa
+    ? orders.filter((o) => new Date(o.created_at) >= new Date(caixa.opened_at))
+    : [];
+
   const todayOrders = orders.filter((o) => isToday(o.created_at));
   const emPreparo = orders.filter((o) => o.status === "em_preparo");
   const prontos = orders.filter((o) => o.status === "pronto");
   const entregas = orders.filter((o) => o.type === "entrega" && o.status !== "concluido" && o.status !== "cancelado");
   const mesasOcupadas = new Set(orders.filter((o) => o.type === "mesa" && o.status !== "concluido").map((o) => o.table_id)).size;
-  const faturamentoHoje = todayOrders
+
+  const faturamentoCaixa = sessionOrders
     .filter((o) => o.status !== "cancelado")
     .reduce((sum, o) => sum + o.total, 0);
 
   const recentOrders = [...orders].reverse().slice(0, 8);
-  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
 
   const histFaturamento = (histOrders ?? []).reduce((sum, o) => sum + o.total, 0);
   const histLabel = histDate
     ? new Date(`${histDate}T12:00:00`).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })
     : "";
 
+  const caixaIsOpen = !!caixa;
+  const caixaLoaded = caixa !== undefined;
+
   return (
     <div>
       <h1 className="text-2xl font-semibold text-foreground">Dashboard</h1>
       <p className="mt-1 text-sm text-muted">Visão geral do estabelecimento</p>
 
+      {/* ── Caixa banner ── */}
+      {caixaLoaded && (
+        <div className={`mt-4 rounded-xl border p-4 ${caixaIsOpen ? "border-green-500/30 bg-green-500/5" : "border-yellow-500/30 bg-yellow-500/5"}`}>
+          {caixaIsOpen ? (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+                  <p className="text-sm font-semibold text-green-500">Caixa Aberto</p>
+                </div>
+                <p className="mt-0.5 text-xs text-muted">
+                  Aberto em {formatDateTime(caixa!.opened_at)} · {sessionOrders.length} pedido(s) · {formatCurrency(faturamentoCaixa)}
+                </p>
+              </div>
+              <button
+                onClick={fecharCaixa}
+                disabled={caixaLoading}
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {caixaLoading ? "Fechando..." : "Fechar Caixa"}
+              </button>
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-yellow-500">Caixa Fechado</p>
+                <p className="mt-0.5 text-xs text-muted">Abra o caixa para começar a registrar o faturamento do dia.</p>
+              </div>
+              <button
+                onClick={abrirCaixa}
+                disabled={caixaLoading}
+                className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-50"
+              >
+                {caixaLoading ? "Abrindo..." : "Abrir Caixa"}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Close summary ── */}
+      {showCloseSummary && (
+        <div className="mt-3 flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3">
+          <div>
+            <p className="text-sm font-semibold text-foreground">Caixa fechado com sucesso</p>
+            <p className="text-xs text-muted">{showCloseSummary.pedidos} pedidos · Faturamento: {formatCurrency(showCloseSummary.faturamento)}</p>
+          </div>
+          <button onClick={() => setShowCloseSummary(null)} className="text-xs text-muted hover:text-foreground">✕</button>
+        </div>
+      )}
+
       <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
-        <StatCard label="Pedidos Hoje" value={todayOrders.length} />
+        <StatCard label="Pedidos no Caixa" value={caixaIsOpen ? sessionOrders.length : "-"} />
         <StatCard label="Em Preparo" value={emPreparo.length} />
         <StatCard label="Prontos" value={prontos.length} />
         <StatCard label="Entregas" value={entregas.length} />
         <StatCard label="Mesas Ocupadas" value={mesasOcupadas} />
-        <StatCard label="Faturamento Hoje" value={formatCurrency(faturamentoHoje)} />
+        <StatCard label="Faturamento Caixa" value={caixaIsOpen ? formatCurrency(faturamentoCaixa) : "-"} />
       </div>
 
       {/* history date picker */}
-      <div className="mt-6 flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
+      <div className="mt-6 flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 flex-wrap">
         <span className="text-sm font-medium text-foreground shrink-0">📅 Ver faturamento de outro dia:</span>
         <input
           type="date"
           max={todayStr()}
           value={histDate}
-          onChange={(e) => {
-            setHistDate(e.target.value);
-            setHistOrders(null);
-          }}
+          onChange={(e) => { setHistDate(e.target.value); setHistOrders(null); }}
           className="rounded-lg border border-border bg-card-hover px-3 py-1.5 text-sm text-foreground"
         />
         <button
@@ -105,10 +230,7 @@ export default function DashboardPage() {
           {histLoading ? "Buscando..." : "Buscar"}
         </button>
         {histDate && (
-          <button
-            onClick={() => { setHistDate(""); setHistOrders(null); }}
-            className="text-xs text-muted hover:text-foreground"
-          >
+          <button onClick={() => { setHistDate(""); setHistOrders(null); }} className="text-xs text-muted hover:text-foreground">
             Limpar
           </button>
         )}
@@ -120,11 +242,10 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div>
               <p className="text-sm font-semibold text-foreground">{histLabel}</p>
-              <p className="text-xs text-muted">{histOrders.length} pedido(s) concluído(s)</p>
+              <p className="text-xs text-muted">{histOrders.length} pedido(s)</p>
             </div>
             <p className="text-xl font-bold text-wine">{formatCurrency(histFaturamento)}</p>
           </div>
-
           {histOrders.length > 0 && (
             <div className="mt-4 divide-y divide-border">
               {histOrders.map((order) => (
@@ -142,10 +263,7 @@ export default function DashboardPage() {
               ))}
             </div>
           )}
-
-          {histOrders.length === 0 && (
-            <p className="mt-3 text-sm text-muted">Nenhum pedido neste dia.</p>
-          )}
+          {histOrders.length === 0 && <p className="mt-3 text-sm text-muted">Nenhum pedido neste dia.</p>}
         </div>
       )}
 
@@ -154,9 +272,7 @@ export default function DashboardPage() {
           <h2 className="text-lg font-medium text-foreground">Atividade Recente</h2>
           <div className="mt-3 space-y-3">
             {loading && <p className="text-sm text-muted">Carregando...</p>}
-            {!loading && recentOrders.length === 0 && (
-              <p className="text-sm text-muted">Nenhum pedido ainda.</p>
-            )}
+            {!loading && recentOrders.length === 0 && <p className="text-sm text-muted">Nenhum pedido ainda.</p>}
             {recentOrders.map((order) => (
               <div key={order.id} onClick={() => setExpandedOrderId(expandedOrderId === order.id ? null : order.id)} className="cursor-pointer">
                 <OrderCard order={order}>
