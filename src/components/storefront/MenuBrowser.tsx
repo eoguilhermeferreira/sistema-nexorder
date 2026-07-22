@@ -118,6 +118,7 @@ export function MenuBrowser({
                   flavors={categoryFlavors}
                   addons={categoryAddons}
                   flavorSizePrices={flavorSizePrices}
+                  addonSizePrices={addonSizePrices}
                 />
               </div>
             );
@@ -193,11 +194,13 @@ function PizzaSection({
   flavors,
   addons,
   flavorSizePrices,
+  addonSizePrices,
 }: {
   category: Category;
   flavors: Flavor[];
   addons: Addon[];
   flavorSizePrices: FlavorSizePrice[];
+  addonSizePrices: AddonSizePrice[];
 }) {
   const { addItem } = useCart();
   const sizeRef = useRef<HTMLDivElement>(null);
@@ -308,6 +311,14 @@ function PizzaSection({
     });
   }
 
+  // resolve addon price: use size-based price if available, else flat price
+  function getAddonPrice(addonId: string): number {
+    if (!selectedSize) return addons.find((a) => a.id === addonId)?.price ?? 0;
+    const asp = addonSizePrices.find((p) => p.addon_id === addonId && p.size_id === selectedSize.id);
+    if (asp) return maxFlavors > 1 ? asp.price_half : asp.price_whole;
+    return addons.find((a) => a.id === addonId)?.price ?? 0;
+  }
+
   // build addons array preserving which flavor each addon belongs to
   function buildAddonsArr() {
     const arr: import("@/types/domain").AddonSelection[] = [];
@@ -317,7 +328,7 @@ function PizzaSection({
         if (qty <= 0) continue;
         const a = addons.find((x) => x.id === addonId);
         if (!a) continue;
-        arr.push({ id: addonId, name: a.name, price: a.price, qty, flavor_name: flavor?.name ?? null });
+        arr.push({ id: addonId, name: a.name, price: getAddonPrice(addonId), qty, flavor_name: flavor?.name ?? null });
       }
     }
     return arr;
@@ -437,8 +448,7 @@ function PizzaSection({
           const isExpanded = expandedFlavorIds.has(flavor.id);
           const flavorAddonQtys = addonQtys[flavor.id] ?? {};
           const flavorAddonsTotal = Object.entries(flavorAddonQtys).reduce((sum, [id, qty]) => {
-            const a = addons.find((x) => x.id === id);
-            return sum + (a?.price ?? 0) * qty;
+            return sum + getAddonPrice(id) * qty;
           }, 0);
           const hasAddons = addons.length > 0;
 
@@ -506,11 +516,12 @@ function PizzaSection({
                   <div className="space-y-2">
                     {addons.map((addon) => {
                       const qty = flavorAddonQtys[addon.id] ?? 0;
+                      const addonPrice = getAddonPrice(addon.id);
                       return (
                         <div key={addon.id} className="flex items-center justify-between">
                           <div>
                             <p className="text-sm text-foreground">{addon.name}</p>
-                            {addon.price > 0 && <p className="text-xs text-wine">+{formatCurrency(addon.price)}</p>}
+                            {addonPrice > 0 && <p className="text-xs text-wine">+{formatCurrency(addonPrice)}</p>}
                           </div>
                           <div className="flex items-center gap-2">
                             {qty > 0 && (
