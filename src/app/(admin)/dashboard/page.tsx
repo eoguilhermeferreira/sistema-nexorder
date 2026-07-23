@@ -48,7 +48,7 @@ export default function DashboardPage() {
 
   const fetchCaixa = useCallback(async () => {
     const supabase = createClient();
-    const { data } = await supabase
+    const { data } = await (supabase as any)
       .from("caixa_sessions")
       .select("*")
       .eq("company_id", company.id)
@@ -73,7 +73,7 @@ export default function DashboardPage() {
   async function abrirCaixa() {
     setCaixaLoading(true);
     const supabase = createClient();
-    const { data } = await supabase
+    const { data } = await (supabase as any)
       .from("caixa_sessions")
       .insert({ company_id: company.id })
       .select()
@@ -93,7 +93,7 @@ export default function DashboardPage() {
     const fat = sessionOrders.reduce((s, o) => s + o.total, 0);
 
     const supabase = createClient();
-    await supabase
+    await (supabase as any)
       .from("caixa_sessions")
       .update({ closed_at: new Date().toISOString(), faturamento: fat })
       .eq("id", caixa.id);
