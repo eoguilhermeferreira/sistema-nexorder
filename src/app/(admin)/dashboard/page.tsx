@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { useRealtimeOrders } from "@/lib/hooks/useRealtimeOrders";
 import { createClient } from "@/lib/supabase/client";
 import { StatCard } from "@/components/admin/StatCard";
@@ -45,6 +46,20 @@ export default function DashboardPage() {
   const [histLoading, setHistLoading] = useState(false);
 
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
+  const [caixaAlerta, setCaixaAlerta] = useState(false);
+  const caixaBannerRef = useRef<HTMLDivElement>(null);
+  const searchParams = useSearchParams();
+
+  // detect redirect from cozinha when caixa is closed
+  useEffect(() => {
+    if (searchParams.get("abrir_caixa") === "1") {
+      setCaixaAlerta(true);
+      setTimeout(() => {
+        caixaBannerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 300);
+      setTimeout(() => setCaixaAlerta(false), 4000);
+    }
+  }, [searchParams]);
 
   const fetchCaixa = useCallback(async () => {
     const supabase = createClient();
@@ -154,7 +169,16 @@ export default function DashboardPage() {
 
       {/* ── Caixa banner ── */}
       {caixaLoaded && (
-        <div className={`mt-4 rounded-xl border p-4 ${caixaIsOpen ? "border-green-500/30 bg-green-500/5" : "border-yellow-500/30 bg-yellow-500/5"}`}>
+        <div
+          ref={caixaBannerRef}
+          className={`mt-4 rounded-xl border p-4 transition-all duration-300 ${
+            caixaAlerta
+              ? "border-red-500 bg-red-500/10 ring-2 ring-red-500 animate-pulse"
+              : caixaIsOpen
+              ? "border-green-500/30 bg-green-500/5"
+              : "border-yellow-500/30 bg-yellow-500/5"
+          }`}
+        >
           {caixaIsOpen ? (
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
@@ -177,7 +201,9 @@ export default function DashboardPage() {
           ) : (
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold text-yellow-500">Caixa Fechado</p>
+                <p className={`text-sm font-semibold ${caixaAlerta ? "text-red-500" : "text-yellow-500"}`}>
+                  {caixaAlerta ? "⚠️ Abra o caixa para aceitar pedidos!" : "Caixa Fechado"}
+                </p>
                 <p className="mt-0.5 text-xs text-muted">Abra o caixa para começar a registrar o faturamento do dia.</p>
               </div>
               <button

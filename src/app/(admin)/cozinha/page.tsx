@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useRealtimeOrders } from "@/lib/hooks/useRealtimeOrders";
+import { useCaixa } from "@/lib/hooks/useCaixa";
 import { createClient } from "@/lib/supabase/client";
 import { OrderCard } from "@/components/admin/OrderCard";
 import { useCompany } from "@/contexts/CompanyContext";
@@ -11,7 +13,9 @@ import type { PrepTimes } from "@/types/domain";
 
 export default function CozinhaPage() {
   const company = useCompany();
+  const router = useRouter();
   const { orders, refetch } = useRealtimeOrders(company.id);
+  const { isOpen: caixaAberto, loading: caixaLoading } = useCaixa(company.id);
   const [prepTimes, setPrepTimes] = useState<PrepTimes | null>(null);
   const [savingPrepTimes, setSavingPrepTimes] = useState(false);
   const [showConcluidos, setShowConcluidos] = useState(false);
@@ -40,6 +44,10 @@ export default function CozinhaPage() {
   ];
 
   async function acceptOrder(orderId: string) {
+    if (!caixaLoading && !caixaAberto) {
+      router.push("/dashboard?abrir_caixa=1");
+      return;
+    }
     const supabase = createClient();
     await supabase
       .from("orders")
