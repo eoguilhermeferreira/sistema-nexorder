@@ -263,7 +263,7 @@ function EmpresaTab({ companyId }: { companyId: string }) {
         is_open: company.is_open,
         delivery_fee: company.delivery_fee ?? 0,
         nicho: (company as any).nicho ?? null,
-      })
+      } as any)
       .eq("id", companyId);
     setSaving(false);
     setSaved(true);
