@@ -304,6 +304,11 @@ function CheckoutModal({
     setSubmitting(true);
     setError("");
     const supabase = createClient();
+
+    // Generate a unique key for this submission attempt so network retries
+    // never create a duplicate order.
+    const idempotencyKey = crypto.randomUUID();
+
     const { data: codeData } = await (supabase as any).rpc("next_order_code", { p_company_id: company.id, p_order_type: type });
     const orderCode = (codeData as string) ?? "0001";
 
@@ -320,12 +325,27 @@ function CheckoutModal({
         change_for: paymentMethod === "dinheiro" && needsChange && changeFor ? Number(changeFor) : null,
         total: grandTotal,
         notes: notes.trim() || null,
-      })
+        idempotency_key: idempotencyKey,
+      } as any)
       .select()
       .single();
 
     if (orderError || !order) {
-      setError("Não foi possível enviar o pedido. Tente novamente.");
+      // Could be a network timeout where the order was actually created.
+      // Check by idempotency_key before showing an error.
+      const { data: existing } = await supabase
+        .from("orders")
+        .select("id")
+        .eq("idempotency_key" as any, idempotencyKey)
+        .maybeSingle();
+
+      if (existing) {
+        clear();
+        router.push(`/cardapio/${company.slug}/pedido/${existing.id}`);
+        return;
+      }
+
+      setError("Não foi possível enviar o pedido. Verifique sua conexão e tente novamente.");
       setSubmitting(false);
       return;
     }
@@ -348,6 +368,8 @@ function CheckoutModal({
     );
 
     if (itemsError) {
+      // rollback: delete the order so the customer can retry cleanly
+      await supabase.from("orders").delete().eq("id", order.id);
       setError("Erro ao salvar itens do pedido. Tente novamente.");
       setSubmitting(false);
       return;
