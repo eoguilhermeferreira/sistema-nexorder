@@ -939,7 +939,7 @@ function ProdutosTab({ companyId }: { companyId: string }) {
                     onClick={() => setIsBundle((v) => !v)}
                     className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${isBundle ? "bg-wine text-white" : "bg-card-hover text-muted"}`}
                   >
-                    🍕 É uma Promoção (bundle de pizzas)?
+                    É uma Promoção (bundle de pizzas)?
                   </button>
                 </div>
                 {isBundle && (
@@ -1089,7 +1089,7 @@ function ProdutosTab({ companyId }: { companyId: string }) {
                         <p className="text-sm font-medium text-foreground">{p.name}</p>
                         {p.bundle_flavor_category_id && (
                           <span className="rounded-full bg-wine/10 px-2 py-0.5 text-xs font-medium text-wine">
-                            🍕 Bundle {p.bundle_pizza_count}x pizza
+                            Bundle {p.bundle_pizza_count}x pizza
                           </span>
                         )}
                       </div>

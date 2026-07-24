@@ -15,13 +15,13 @@ function slugify(value: string) {
 }
 
 const nichos = [
-  { value: "pizzaria", label: "🍕 Pizzaria" },
-  { value: "lanchonete", label: "🍔 Lanchonete" },
-  { value: "hamburgueria", label: "🍔 Hamburgueria" },
-  { value: "restaurante", label: "🍽️ Restaurante" },
-  { value: "esfiharia", label: "🥙 Esfiharia" },
-  { value: "pastelaria", label: "🥟 Pastelaria" },
-  { value: "outros", label: "🏪 Outros" },
+  { value: "pizzaria", label: "Pizzaria" },
+  { value: "lanchonete", label: "Lanchonete" },
+  { value: "hamburgueria", label: "Hamburgueria" },
+  { value: "restaurante", label: "Restaurante" },
+  { value: "esfiharia", label: "Esfiharia" },
+  { value: "pastelaria", label: "Pastelaria" },
+  { value: "outros", label: "Outros" },
 ];
 
 export default function CadastroPage() {

@@ -202,7 +202,7 @@ export default function DashboardPage() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className={`text-sm font-semibold ${caixaAlerta ? "text-red-500" : "text-yellow-500"}`}>
-                  {caixaAlerta ? "⚠️ Abra o caixa para aceitar pedidos!" : "Caixa Fechado"}
+                  {caixaAlerta ? "Abra o caixa para aceitar pedidos!" : "Caixa Fechado"}
                 </p>
                 <p className="mt-0.5 text-xs text-muted">Abra o caixa para começar a registrar o faturamento do dia.</p>
               </div>
@@ -240,7 +240,7 @@ export default function DashboardPage() {
 
       {/* history date picker */}
       <div className="mt-6 flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 flex-wrap">
-        <span className="text-sm font-medium text-foreground shrink-0">📅 Ver faturamento de outro dia:</span>
+        <span className="text-sm font-medium text-foreground shrink-0">Ver faturamento de outro dia:</span>
         <input
           type="date"
           max={todayStr()}
@@ -307,7 +307,7 @@ export default function DashboardPage() {
                       onClick={(e) => { e.stopPropagation(); printOrder(order); }}
                       className="flex items-center gap-2 rounded-lg border border-border bg-card-hover px-4 py-2 text-sm font-medium text-foreground hover:bg-border"
                     >
-                      🖨️ Reimprimir pedido
+                      Reimprimir pedido
                     </button>
                   )}
                 </OrderCard>

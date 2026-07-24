@@ -172,7 +172,7 @@ function OrderDetail({ order, onFinalize }: { order: Order; onFinalize: (id: str
           onClick={() => printOrder(order)}
           className="w-full rounded-lg bg-card-hover px-4 py-2 text-sm font-medium text-foreground hover:bg-border"
         >
-          🖨️ Imprimir Pedido
+          Imprimir Pedido
         </button>
         {order.status === "pronto" && (
           <button

@@ -229,14 +229,14 @@ function OrderDetail({
           onClick={() => printOrder(order)}
           className="w-full rounded-lg bg-card-hover px-4 py-2 text-sm font-medium text-foreground hover:bg-border"
         >
-          🖨️ Imprimir Pedido
+          Imprimir Pedido
         </button>
         {order.status === "pronto" && (
           <button
             onClick={() => onDispatch(order.id)}
             className="w-full rounded-lg bg-wine px-4 py-2 text-sm font-medium text-white hover:bg-wine-hover"
           >
-            🛵 Saiu para Entrega
+            Saiu para Entrega
           </button>
         )}
         {order.status === "saiu_entrega" && (
