@@ -72,7 +72,7 @@ export default function CadastroPage() {
       email,
       phone: phone || undefined,
       nicho,
-    });
+    } as any);
 
     if (companyError) {
       setLoading(false);

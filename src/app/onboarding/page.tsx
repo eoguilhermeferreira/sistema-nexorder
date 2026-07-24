@@ -59,7 +59,7 @@ export default function OnboardingPage() {
         email: user.email,
         phone: phone || undefined,
         nicho,
-      })
+      } as any)
       .select("id")
       .single();
 
