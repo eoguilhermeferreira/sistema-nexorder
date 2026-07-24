@@ -211,8 +211,20 @@ function CardapioContent({ storefront }: { storefront: ReturnType<typeof useStor
         <MenuBrowser categories={categories} products={products} flavors={flavors} addons={addons} flavorSizePrices={flavorSizePrices} addonSizePrices={addonSizePrices} />
       </div>
 
+      {/* loja fechada banner */}
+      {!company.is_open && (
+        <div className="fixed bottom-0 left-0 right-0 z-40 px-4 pb-4 pt-2 bg-gradient-to-t from-background to-transparent"
+          style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
+        >
+          <div className="flex items-center justify-center gap-2 rounded-2xl bg-zinc-800 px-5 py-4 shadow-xl">
+            <span className="text-lg">🔒</span>
+            <span className="text-sm font-semibold text-white">Estamos fechados no momento</span>
+          </div>
+        </div>
+      )}
+
       {/* sticky cart button */}
-      {items.length > 0 && (
+      {items.length > 0 && company.is_open && (
         <div
           className="fixed bottom-0 left-0 right-0 z-40 px-4 pb-4 pt-2 bg-gradient-to-t from-background to-transparent"
           style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
@@ -276,6 +288,10 @@ function CheckoutModal({
 
   async function submit() {
     if (!company) return;
+    if (!company.is_open) {
+      setError("A loja está fechada no momento. Não é possível enviar pedidos.");
+      return;
+    }
     if (!name.trim() || items.length === 0 || !paymentMethod) {
       setError("Preencha seu nome, escolha um pagamento e adicione itens.");
       return;

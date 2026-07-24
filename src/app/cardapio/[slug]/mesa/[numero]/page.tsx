@@ -87,6 +87,7 @@ function MesaContent({ storefront, numero }: { storefront: ReturnType<typeof use
 
   async function sendOrder() {
     if (!company || !tableId || !customer || items.length === 0) return;
+    if (!company.is_open) return;
     setSending(true);
     const supabase = createClient();
     const { data: codeData } = await (supabase as any).rpc("next_order_code", { p_company_id: company.id, p_order_type: "mesa" });
@@ -204,8 +205,8 @@ function MesaContent({ storefront, numero }: { storefront: ReturnType<typeof use
             <h1 className="truncate text-lg font-bold text-foreground leading-tight">
               {company?.fantasy_name ?? company?.name}
             </h1>
-            <span className="inline-block rounded-full bg-green-500/10 px-2 py-0.5 text-xs font-medium text-green-600">
-              Aberto agora
+            <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${company.is_open ? "bg-green-500/10 text-green-600" : "bg-red-500/10 text-red-500"}`}>
+              {company.is_open ? "Aberto agora" : "Fechado"}
             </span>
           </div>
         </div>
@@ -288,7 +289,13 @@ function MesaContent({ storefront, numero }: { storefront: ReturnType<typeof use
         </div>
       )}
 
-      {items.length > 0 && (
+      {!company.is_open && (
+        <div className="fixed bottom-4 left-1/2 z-40 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 rounded-xl bg-zinc-800 px-4 py-3 shadow-lg text-center">
+          <p className="text-sm font-semibold text-white">🔒 Estamos fechados no momento</p>
+        </div>
+      )}
+
+      {items.length > 0 && company.is_open && (
         <div className="fixed bottom-4 left-1/2 z-40 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 rounded-xl bg-card p-3 shadow-lg">
           <p className="text-sm text-muted">{items.length} item(ns) — {formatCurrency(total)}</p>
           <button

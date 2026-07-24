@@ -92,6 +92,13 @@ export default function CozinhaPage() {
     refetch();
   }
 
+  async function cancelOrder(orderId: string) {
+    if (!confirm("Cancelar este pedido?")) return;
+    const supabase = createClient();
+    await supabase.from("orders").update({ status: "cancelado" }).eq("id", orderId);
+    refetch();
+  }
+
   async function savePrepTimes() {
     if (!prepTimes) return;
     setSavingPrepTimes(true);
@@ -164,24 +171,40 @@ export default function CozinhaPage() {
           {activeOrders.map((order) => (
             <OrderCard key={order.id} order={order}>
               {order.status === "aguardando_aceite" && (
-                <button
-                  onClick={() => acceptOrder(order.id)}
-                  className="rounded-lg bg-wine px-4 py-2 text-sm font-medium text-white hover:bg-wine-hover"
-                >
-                  Aceitar Pedido
-                </button>
+                <>
+                  <button
+                    onClick={() => cancelOrder(order.id)}
+                    className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm font-medium text-red-400 hover:bg-red-500/20"
+                    title="Recusar pedido"
+                  >
+                    🗑️ Recusar
+                  </button>
+                  <button
+                    onClick={() => acceptOrder(order.id)}
+                    className="flex-1 rounded-lg bg-wine px-4 py-2 text-sm font-medium text-white hover:bg-wine-hover"
+                  >
+                    Aceitar Pedido
+                  </button>
+                </>
               )}
               {order.status === "em_preparo" && (
                 <>
                   <button
+                    onClick={() => cancelOrder(order.id)}
+                    className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm font-medium text-red-400 hover:bg-red-500/20"
+                    title="Cancelar pedido"
+                  >
+                    🗑️
+                  </button>
+                  <button
                     onClick={() => printOrder(order)}
                     className="rounded-lg bg-card-hover px-4 py-2 text-sm font-medium text-foreground hover:bg-border"
                   >
-                    🖨️ Imprimir Pedido
+                    🖨️ Imprimir
                   </button>
                   <button
                     onClick={() => markReady(order.id)}
-                    className="rounded-lg bg-wine px-4 py-2 text-sm font-medium text-white hover:bg-wine-hover"
+                    className="flex-1 rounded-lg bg-wine px-4 py-2 text-sm font-medium text-white hover:bg-wine-hover"
                   >
                     🍕 Pedido Pronto
                   </button>
