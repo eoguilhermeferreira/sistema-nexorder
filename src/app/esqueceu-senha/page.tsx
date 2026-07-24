@@ -1,14 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
-export default function LoginPage() {
-  const router = useRouter();
+export default function EsqueceuSenhaPage() {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -18,24 +16,44 @@ export default function LoginPage() {
     setError(null);
 
     const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/redefinir-senha`,
+    });
 
     setLoading(false);
 
     if (error) {
-      setError("E-mail ou senha inválidos.");
+      setError("Não foi possível enviar o e-mail. Tente novamente.");
       return;
     }
 
-    router.push("/dashboard");
-    router.refresh();
+    setSent(true);
+  }
+
+  if (sent) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <div className="w-full max-w-sm rounded-xl border border-border bg-card p-8 text-center">
+          <div className="mb-3 text-4xl">✉️</div>
+          <h1 className="text-xl font-semibold text-foreground">E-mail enviado!</h1>
+          <p className="mt-2 text-sm text-muted">
+            Enviamos um link para <strong className="text-foreground">{email}</strong> para redefinir sua senha. Verifique sua caixa de entrada.
+          </p>
+          <Link href="/login" className="mt-6 block text-sm text-foreground underline">
+            Voltar para o login
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm rounded-xl border border-border bg-card p-8">
-        <h1 className="text-xl font-semibold text-foreground">NexOrder</h1>
-        <p className="mt-1 text-sm text-muted">Entre na sua conta</p>
+        <h1 className="text-xl font-semibold text-foreground">Esqueceu a senha?</h1>
+        <p className="mt-1 text-sm text-muted">
+          Informe seu e-mail e enviaremos um link para redefinir sua senha.
+        </p>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
           <label className="block text-sm">
@@ -49,38 +67,21 @@ export default function LoginPage() {
             />
           </label>
 
-          <label className="block text-sm">
-            <span className="text-muted">Senha</span>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-border bg-card-hover px-3 py-2 text-foreground"
-            />
-          </label>
-
           {error && <p className="text-sm text-red-400">{error}</p>}
-
-          <div className="text-right">
-            <Link href="/esqueceu-senha" className="text-xs text-muted hover:text-foreground">
-              Esqueceu a senha?
-            </Link>
-          </div>
 
           <button
             type="submit"
             disabled={loading}
             className="w-full rounded-lg bg-wine px-4 py-2 text-sm font-medium text-white hover:bg-wine-hover disabled:opacity-50"
           >
-            {loading ? "Entrando..." : "Entrar"}
+            {loading ? "Enviando..." : "Enviar link de redefinição"}
           </button>
         </form>
 
         <p className="mt-4 text-center text-sm text-muted">
-          Não tem conta?{" "}
-          <Link href="/cadastro" className="text-foreground underline">
-            Criar conta
+          Lembrou a senha?{" "}
+          <Link href="/login" className="text-foreground underline">
+            Voltar ao login
           </Link>
         </p>
       </div>
