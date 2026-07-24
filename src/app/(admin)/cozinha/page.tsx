@@ -177,7 +177,7 @@ export default function CozinhaPage() {
                     className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm font-medium text-red-400 hover:bg-red-500/20"
                     title="Recusar pedido"
                   >
-                    🗑️ Recusar
+                    Recusar
                   </button>
                   <button
                     onClick={() => acceptOrder(order.id)}
@@ -194,19 +194,19 @@ export default function CozinhaPage() {
                     className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm font-medium text-red-400 hover:bg-red-500/20"
                     title="Cancelar pedido"
                   >
-                    🗑️
+                    Cancelar
                   </button>
                   <button
                     onClick={() => printOrder(order)}
                     className="rounded-lg bg-card-hover px-4 py-2 text-sm font-medium text-foreground hover:bg-border"
                   >
-                    🖨️ Imprimir
+                    Imprimir
                   </button>
                   <button
                     onClick={() => markReady(order.id)}
                     className="flex-1 rounded-lg bg-wine px-4 py-2 text-sm font-medium text-white hover:bg-wine-hover"
                   >
-                    🍕 Pedido Pronto
+                    Pedido Pronto
                   </button>
                 </>
               )}

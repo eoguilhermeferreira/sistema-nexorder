@@ -5,23 +5,22 @@ import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 const menuItems = [
-  { href: "/dashboard", label: "Dashboard", icon: "🏠" },
-  { href: "/cozinha", label: "Cozinha", icon: "👨‍🍳" },
-  { href: "/retiradas", label: "Retiradas", icon: "🛍" },
-  { href: "/entregas", label: "Entregas", icon: "🛵" },
-  { href: "/mesas", label: "Mesas", icon: "🍽" },
-  { href: "/cardapio", label: "Cardápio", icon: "📖" },
-  { href: "/relatorios", label: "Relatórios", icon: "📊" },
-  { href: "/configuracoes", label: "Configurações", icon: "⚙" },
+  { href: "/dashboard", label: "Dashboard" },
+  { href: "/cozinha", label: "Cozinha" },
+  { href: "/retiradas", label: "Retiradas" },
+  { href: "/entregas", label: "Entregas" },
+  { href: "/mesas", label: "Mesas" },
+  { href: "/cardapio", label: "Cardápio" },
+  { href: "/relatorios", label: "Relatórios" },
+  { href: "/configuracoes", label: "Configurações" },
 ];
 
 interface SidebarProps {
   companyName: string;
-  companyEmoji?: string;
   badges?: Partial<Record<string, number>>;
 }
 
-export function Sidebar({ companyName, companyEmoji = "🍕", badges = {} }: SidebarProps) {
+export function Sidebar({ companyName, badges = {} }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -39,8 +38,7 @@ export function Sidebar({ companyName, companyEmoji = "🍕", badges = {} }: Sid
         <p className="text-xs text-muted">Gestão Inteligente de Pedidos</p>
       </div>
 
-      <div className="mt-6 flex items-center gap-2 rounded-lg bg-card-hover px-3 py-2">
-        <span className="text-lg">{companyEmoji}</span>
+      <div className="mt-6 rounded-lg bg-card-hover px-3 py-2">
         <span className="truncate text-sm font-medium text-foreground">{companyName}</span>
       </div>
 
@@ -59,10 +57,7 @@ export function Sidebar({ companyName, companyEmoji = "🍕", badges = {} }: Sid
                   : "text-muted hover:bg-card-hover hover:text-foreground"
               }`}
             >
-              <span className="flex items-center gap-2">
-                <span>{item.icon}</span>
-                <span>{item.label}</span>
-              </span>
+              <span>{item.label}</span>
               {!!badge && (
                 <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-xs font-semibold text-white">
                   {badge}
@@ -75,10 +70,9 @@ export function Sidebar({ companyName, companyEmoji = "🍕", badges = {} }: Sid
 
       <button
         onClick={handleLogout}
-        className="mt-2 flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted hover:bg-card-hover hover:text-foreground"
+        className="mt-2 rounded-lg px-3 py-2 text-left text-sm text-muted hover:bg-card-hover hover:text-foreground"
       >
-        <span>🚪</span>
-        <span>Sair</span>
+        Sair
       </button>
     </aside>
   );
