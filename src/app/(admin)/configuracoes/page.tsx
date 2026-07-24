@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { Database } from "@/types/database";
 import type { BusinessHours, CompanySettings, TableRestaurant } from "@/types/domain";
 
-type Tab = "empresa" | "mesas" | "impressoras";
+type Tab = "empresa" | "mesas" | "impressoras" | "pagamento" | "notificacoes";
 
 type CompanyRow = Database["public"]["Tables"]["companies"]["Row"];
 
@@ -25,6 +25,8 @@ export default function ConfiguracoesPage() {
           ["empresa", "Empresa"],
           ["mesas", "Mesas"],
           ["impressoras", "Impressoras"],
+          ["pagamento", "Pagamento"],
+          ["notificacoes", "Notificações"],
         ] as [Tab, string][]).map(([key, label]) => (
           <button
             key={key}
@@ -40,6 +42,8 @@ export default function ConfiguracoesPage() {
         {tab === "empresa" && <EmpresaTab companyId={company.id} />}
         {tab === "mesas" && <MesasTab companyId={company.id} slug={company.slug} companyName={company.name} />}
         {tab === "impressoras" && <ImpressorasTab companyId={company.id} />}
+        {tab === "pagamento" && <PagamentoTab companyId={company.id} />}
+        {tab === "notificacoes" && <NotificacoesTab companyId={company.id} />}
       </div>
     </div>
   );
@@ -165,6 +169,16 @@ function ImageUpload({
   );
 }
 
+const nichos = [
+  { value: "pizzaria", label: "🍕 Pizzaria" },
+  { value: "lanchonete", label: "🍔 Lanchonete" },
+  { value: "hamburgueria", label: "🍔 Hamburgueria" },
+  { value: "restaurante", label: "🍽️ Restaurante" },
+  { value: "esfiharia", label: "🥙 Esfiharia" },
+  { value: "pastelaria", label: "🥟 Pastelaria" },
+  { value: "outros", label: "🏪 Outros" },
+];
+
 const COLOR_DEFAULTS: Record<string, string> = {
   primary: "#7c1f3d",
   secondary: "#93234a",
@@ -248,6 +262,7 @@ function EmpresaTab({ companyId }: { companyId: string }) {
         highlight_color: company.highlight_color,
         is_open: company.is_open,
         delivery_fee: company.delivery_fee ?? 0,
+        nicho: (company as any).nicho ?? null,
       })
       .eq("id", companyId);
     setSaving(false);
@@ -314,6 +329,27 @@ function EmpresaTab({ companyId }: { companyId: string }) {
               <span className="text-xs font-medium text-foreground">Redondo</span>
             </button>
           </div>
+        </div>
+      </div>
+
+      {/* nicho */}
+      <div>
+        <p className="mb-2 text-sm text-muted">Tipo de estabelecimento</p>
+        <div className="grid grid-cols-3 gap-2">
+          {nichos.map((n) => (
+            <button
+              key={n.value}
+              type="button"
+              onClick={() => setCompany({ ...company, nicho: n.value } as any)}
+              className={`rounded-lg border px-3 py-2 text-left text-sm transition-colors ${
+                (company as any).nicho === n.value
+                  ? "border-wine bg-wine/10 text-foreground font-medium"
+                  : "border-border bg-card-hover text-muted hover:border-wine/50"
+              }`}
+            >
+              {n.label}
+            </button>
+          ))}
         </div>
       </div>
 

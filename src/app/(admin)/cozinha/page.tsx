@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useRealtimeOrders } from "@/lib/hooks/useRealtimeOrders";
 import { useCaixa } from "@/lib/hooks/useCaixa";
@@ -17,6 +17,7 @@ export default function CozinhaPage() {
   const { orders, refetch } = useRealtimeOrders(company.id);
   const { isOpen: caixaAberto, loading: caixaLoading } = useCaixa(company.id);
   const [prepTimes, setPrepTimes] = useState<PrepTimes | null>(null);
+  const prevAguardandoCount = useRef<number | null>(null);
   const [savingPrepTimes, setSavingPrepTimes] = useState(false);
   const [showConcluidos, setShowConcluidos] = useState(false);
 
@@ -31,6 +32,32 @@ export default function CozinhaPage() {
   }, [company.id]);
 
   const aguardando = orders.filter((o) => o.status === "aguardando_aceite");
+
+  // play beep when new orders arrive
+  useEffect(() => {
+    if (prevAguardandoCount.current === null) {
+      prevAguardandoCount.current = aguardando.length;
+      return;
+    }
+    if (aguardando.length > prevAguardandoCount.current) {
+      try {
+        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        [0, 180, 360].forEach((delay) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.frequency.value = 880;
+          osc.type = "sine";
+          gain.gain.setValueAtTime(0.3, ctx.currentTime + delay / 1000);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay / 1000 + 0.15);
+          osc.start(ctx.currentTime + delay / 1000);
+          osc.stop(ctx.currentTime + delay / 1000 + 0.15);
+        });
+      } catch {}
+    }
+    prevAguardandoCount.current = aguardando.length;
+  }, [aguardando.length]);
   const emPreparo = orders.filter((o) => o.status === "em_preparo");
   const prontos = orders.filter((o) => o.status === "pronto");
   const concluidosHoje = orders.filter(

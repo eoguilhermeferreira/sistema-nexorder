@@ -11,6 +11,7 @@ const menuItems = [
   { href: "/entregas", label: "Entregas", icon: "🛵" },
   { href: "/mesas", label: "Mesas", icon: "🍽" },
   { href: "/cardapio", label: "Cardápio", icon: "📖" },
+  { href: "/relatorios", label: "Relatórios", icon: "📊" },
   { href: "/configuracoes", label: "Configurações", icon: "⚙" },
 ];
 
