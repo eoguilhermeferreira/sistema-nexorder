@@ -47,7 +47,12 @@ export default function OnboardingPage() {
     }
 
     const displayName = fantasyName || companyName;
-    const slug = `${slugify(displayName)}-${user.id.slice(0, 6)}`;
+    const baseSlug = slugify(displayName);
+    const { data: existing } = await supabase.from("companies").select("slug").like("slug", `${baseSlug}%`);
+    const taken = new Set((existing ?? []).map((r: any) => r.slug));
+    let slug = baseSlug;
+    let n = 2;
+    while (taken.has(slug)) { slug = `${baseSlug}-${n}`; n++; }
 
     const { data: company, error: companyError } = await supabase
       .from("companies")
