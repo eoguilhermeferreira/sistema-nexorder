@@ -57,6 +57,14 @@ export default function RelatoriosPage() {
 
   const totalFat = (orders ?? []).reduce((s, o) => s + o.total, 0);
 
+  const byPayment = (orders ?? []).reduce<Record<string, { count: number; total: number }>>((acc, o) => {
+    const method = o.payment_method ?? "Não informado";
+    if (!acc[method]) acc[method] = { count: 0, total: 0 };
+    acc[method].count++;
+    acc[method].total += o.total;
+    return acc;
+  }, {});
+
   const byDay = (orders ?? []).reduce<Record<string, { count: number; total: number }>>((acc, o) => {
     const day = o.created_at.slice(0, 10);
     if (!acc[day]) acc[day] = { count: 0, total: 0 };
@@ -172,7 +180,24 @@ export default function RelatoriosPage() {
             </div>
           </div>
 
-          <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
+            {/* por forma de pagamento */}
+            <div className="rounded-xl border border-border bg-card p-4">
+              <h2 className="text-sm font-semibold text-foreground">Por Forma de Pagamento</h2>
+              <div className="mt-3 space-y-2">
+                {Object.entries(byPayment).map(([method, { count, total }]) => (
+                  <div key={method} className="flex items-center justify-between text-sm">
+                    <span className="text-muted capitalize">{method}</span>
+                    <div className="flex gap-4">
+                      <span className="text-muted">{count} pedido(s)</span>
+                      <span className="font-medium text-foreground w-24 text-right">{formatCurrency(total)}</span>
+                    </div>
+                  </div>
+                ))}
+                {Object.keys(byPayment).length === 0 && <p className="text-sm text-muted">Nenhum pedido.</p>}
+              </div>
+            </div>
+
             {/* por tipo */}
             <div className="rounded-xl border border-border bg-card p-4">
               <h2 className="text-sm font-semibold text-foreground">Por Tipo de Pedido</h2>
@@ -210,9 +235,9 @@ export default function RelatoriosPage() {
             </div>
           </div>
 
-          {/* lista detalhada */}
+          {/* lista detalhada — oculta na impressão */}
           {orders.length > 0 && (
-            <div className="mt-6 rounded-xl border border-border bg-card p-4">
+            <div className="mt-6 rounded-xl border border-border bg-card p-4 print:hidden">
               <h2 className="text-sm font-semibold text-foreground">Pedidos do Período</h2>
               <div className="mt-3 divide-y divide-border">
                 {orders.map((order) => (
