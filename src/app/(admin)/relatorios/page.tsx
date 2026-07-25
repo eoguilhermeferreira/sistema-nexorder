@@ -75,7 +75,7 @@ export default function RelatoriosPage() {
   const ticketMedio = orders && orders.length > 0 ? totalFat / orders.length : 0;
 
   return (
-    <div>
+    <div className="print:p-0">
       <h1 className="text-2xl font-semibold text-foreground">Relatórios</h1>
       <p className="mt-1 text-sm text-muted">Faturamento e pedidos por período</p>
 
@@ -137,8 +137,23 @@ export default function RelatoriosPage() {
 
       {orders !== null && (
         <>
+          {/* cabeçalho de impressão + botão */}
+          <div className="mt-6 flex items-center justify-between print:hidden">
+            <span />
+            <button
+              onClick={() => window.print()}
+              className="rounded-lg border border-border bg-card-hover px-4 py-2 text-sm text-foreground hover:bg-card"
+            >
+              Imprimir Relatório
+            </button>
+          </div>
+          <div className="hidden print:block mb-4">
+            <p className="text-lg font-bold">{typeof window !== "undefined" ? document.title : "Relatório"}</p>
+            <p className="text-sm text-muted">Período: {fmtDate(startDate)} — {fmtDate(endDate)}</p>
+          </div>
+
           {/* totais */}
-          <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <div className="mt-2 grid grid-cols-2 gap-4 sm:grid-cols-4">
             <div className="rounded-xl border border-border bg-card p-4">
               <p className="text-xs text-muted">Total Faturado</p>
               <p className="mt-1 text-2xl font-bold text-wine">{formatCurrency(totalFat)}</p>

@@ -28,3 +28,18 @@ body {
   background: var(--background);
   color: var(--foreground);
 }
+
+@media print {
+  aside,
+  nav,
+  [data-sidebar] {
+    display: none !important;
+  }
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+  .print\:hidden {
+    display: none !important;
+  }
+}
