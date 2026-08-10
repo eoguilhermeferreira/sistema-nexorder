@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -33,9 +34,19 @@ export function Sidebar({ companyName, badges = {} }: SidebarProps) {
 
   return (
     <aside className="flex h-screen w-64 flex-col border-r border-border bg-card px-4 py-6">
-      <div>
-        <p className="text-lg font-semibold text-foreground">FoodNex</p>
-        <p className="text-xs text-muted">Gestão Inteligente de Pedidos</p>
+      <div className="flex items-center gap-2">
+        <Image
+          src="/logo.png"
+          alt="FoodNex"
+          width={48}
+          height={48}
+          className="rounded-lg"
+          style={{ mixBlendMode: "lighten" }}
+        />
+        <div>
+          <p className="text-lg font-semibold text-foreground">FoodNex</p>
+          <p className="text-xs text-muted">Gestão Inteligente de Pedidos</p>
+        </div>
       </div>
 
       <div className="mt-6 rounded-lg bg-card-hover px-3 py-2">
