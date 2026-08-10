@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { useRealtimeOrders } from "@/lib/hooks/useRealtimeOrders";
 import { useCompany } from "@/contexts/CompanyContext";
 import { createClient } from "@/lib/supabase/client";
@@ -39,6 +39,12 @@ export default function RetiradasPage() {
     setSelectedId(null);
     refetch();
   }
+
+  const changePayment = useCallback(async (orderId: string, method: string) => {
+    const supabase = createClient();
+    await supabase.from("orders").update({ payment_method: method }).eq("id", orderId);
+    refetch();
+  }, [refetch]);
 
   return (
     <div>
@@ -116,14 +122,25 @@ export default function RetiradasPage() {
             </div>
           )}
 
-          {selectedOrder && <OrderDetail order={selectedOrder} onFinalize={finalizeOrder} />}
+          {selectedOrder && <OrderDetail order={selectedOrder} onFinalize={finalizeOrder} onPaymentChange={changePayment} />}
         </div>
       </div>
     </div>
   );
 }
 
-function OrderDetail({ order, onFinalize }: { order: Order; onFinalize: (id: string) => void }) {
+const paymentOptions = [
+  { value: "dinheiro", label: "Dinheiro" },
+  { value: "pix", label: "Pix" },
+  { value: "cartao_credito", label: "Cartão de Crédito" },
+  { value: "cartao_debito", label: "Cartão de Débito" },
+];
+
+function OrderDetail({ order, onFinalize, onPaymentChange }: {
+  order: Order;
+  onFinalize: (id: string) => void;
+  onPaymentChange: (id: string, method: string) => void;
+}) {
   return (
     <div className="rounded-xl border border-border bg-card p-4">
       <p className="font-semibold text-foreground">#{order.order_code}</p>
@@ -148,10 +165,18 @@ function OrderDetail({ order, onFinalize }: { order: Order; onFinalize: (id: str
         ))}
       </ul>
 
-      <div className="mt-4 space-y-1 border-t border-border pt-3 text-sm">
-        <div className="flex justify-between">
-          <span className="text-muted">Pagamento</span>
-          <span className="text-foreground">{order.payment_method ?? "-"}</span>
+      <div className="mt-4 space-y-2 border-t border-border pt-3 text-sm">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-muted shrink-0">Pagamento</span>
+          <select
+            value={order.payment_method ?? ""}
+            onChange={(e) => onPaymentChange(order.id, e.target.value)}
+            className="rounded-lg border border-border bg-card-hover px-2 py-1 text-sm text-foreground"
+          >
+            {paymentOptions.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
         </div>
         {order.payment_method === "dinheiro" && order.change_for != null && (
           <div className="flex justify-between">
