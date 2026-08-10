@@ -141,7 +141,7 @@ export function printOrder(order: Order) {
         </div>
         ${order.notes ? `<hr/><p style="font-weight:600;color:#111;"><em>Obs: ${order.notes}</em></p>` : ""}
         <hr/>
-        <p class="center" style="font-size:11px;color:#111;font-weight:600;margin-top:8px;">Sistema NexOrder</p>
+        <p class="center" style="font-size:11px;color:#111;font-weight:600;margin-top:8px;">Sistema FoodNex</p>
         <br/><br/>
         <div style="text-align:center;">
           <button onclick="window.print()" style="padding:8px 24px;font-size:14px;cursor:pointer;">🖨️ Imprimir</button>
