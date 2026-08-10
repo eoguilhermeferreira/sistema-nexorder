@@ -96,7 +96,7 @@ export default function CadastroPage() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm rounded-xl border border-border bg-card p-8">
         <h1 className="text-xl font-semibold text-foreground">Criar conta</h1>
-        <p className="mt-1 text-sm text-muted">Cadastre sua empresa no NexOrder</p>
+        <p className="mt-1 text-sm text-muted">Cadastre sua empresa no FoodNex</p>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
           <label className="block text-sm">
