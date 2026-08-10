@@ -46,11 +46,29 @@ export default function MesasPage() {
     refetch();
   }
 
+  const [paymentMethodMap, setPaymentMethodMap] = useState<Record<string, string>>({});
+
+  const paymentOptions = [
+    { value: "dinheiro", label: "Dinheiro" },
+    { value: "pix", label: "Pix" },
+    { value: "cartao_credito", label: "Cartão de Crédito" },
+    { value: "cartao_debito", label: "Cartão de Débito" },
+  ];
+
   async function markPaid(customerId: string) {
     const supabase = createClient();
     await supabase
       .from("table_customers")
-      .update({ payment_status: "pago" })
+      .update({ payment_status: "pago", payment_method: paymentMethodMap[customerId] ?? "dinheiro" } as any)
+      .eq("id", customerId);
+    refetch();
+  }
+
+  async function changeCustomerPayment(customerId: string, method: string) {
+    const supabase = createClient();
+    await supabase
+      .from("table_customers")
+      .update({ payment_method: method } as any)
       .eq("id", customerId);
     refetch();
   }
@@ -151,13 +169,38 @@ export default function MesasPage() {
                       </span>
                     </div>
                     <p className="mt-1 text-sm text-muted">{formatCurrency(customer.subtotal ?? 0)}</p>
+                    {customer.payment_status === "pago" && customer.payment_method && (
+                      <p className="mt-1 text-xs text-muted">{paymentOptions.find(o => o.value === customer.payment_method)?.label ?? customer.payment_method}</p>
+                    )}
                     {customer.payment_status !== "pago" && (
-                      <button
-                        onClick={() => markPaid(customer.id)}
-                        className="mt-2 w-full rounded-lg bg-wine px-3 py-1.5 text-xs font-medium text-white hover:bg-wine-hover"
+                      <div className="mt-2 flex gap-2">
+                        <select
+                          value={paymentMethodMap[customer.id] ?? "dinheiro"}
+                          onChange={(e) => setPaymentMethodMap((m) => ({ ...m, [customer.id]: e.target.value }))}
+                          className="flex-1 rounded-lg border border-border bg-card px-2 py-1.5 text-xs text-foreground"
+                        >
+                          {paymentOptions.map((o) => (
+                            <option key={o.value} value={o.value}>{o.label}</option>
+                          ))}
+                        </select>
+                        <button
+                          onClick={() => markPaid(customer.id)}
+                          className="rounded-lg bg-wine px-3 py-1.5 text-xs font-medium text-white hover:bg-wine-hover"
+                        >
+                          Pago
+                        </button>
+                      </div>
+                    )}
+                    {customer.payment_status === "pago" && (
+                      <select
+                        value={customer.payment_method ?? "dinheiro"}
+                        onChange={(e) => changeCustomerPayment(customer.id, e.target.value)}
+                        className="mt-1 w-full rounded-lg border border-border bg-card-hover px-2 py-1 text-xs text-foreground"
                       >
-                        Marcar como Pago
-                      </button>
+                        {paymentOptions.map((o) => (
+                          <option key={o.value} value={o.value}>{o.label}</option>
+                        ))}
+                      </select>
                     )}
                   </div>
                 ))}
