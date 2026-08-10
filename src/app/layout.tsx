@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "NexOrder",
+  title: "FoodNex",
   description: "Gestão Inteligente de Pedidos",
 };
 

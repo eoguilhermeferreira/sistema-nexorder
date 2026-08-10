@@ -34,7 +34,7 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm rounded-xl border border-border bg-card p-8">
-        <h1 className="text-xl font-semibold text-foreground">NexOrder</h1>
+        <h1 className="text-xl font-semibold text-foreground">FoodNex</h1>
         <p className="mt-1 text-sm text-muted">Entre na sua conta</p>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">

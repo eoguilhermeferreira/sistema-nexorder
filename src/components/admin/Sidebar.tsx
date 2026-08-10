@@ -34,7 +34,7 @@ export function Sidebar({ companyName, badges = {} }: SidebarProps) {
   return (
     <aside className="flex h-screen w-64 flex-col border-r border-border bg-card px-4 py-6">
       <div>
-        <p className="text-lg font-semibold text-foreground">NexOrder</p>
+        <p className="text-lg font-semibold text-foreground">FoodNex</p>
         <p className="text-xs text-muted">Gestão Inteligente de Pedidos</p>
       </div>
 
