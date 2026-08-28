@@ -47,6 +47,22 @@ export default function MesasPage() {
   }
 
   const [paymentMethodMap, setPaymentMethodMap] = useState<Record<string, string>>({});
+  const [addItemFor, setAddItemFor] = useState<string | null>(null);
+  const [itemName, setItemName] = useState("");
+  const [itemQty, setItemQty] = useState("1");
+  const [itemPrice, setItemPrice] = useState("");
+  const [addingLoading, setAddingLoading] = useState(false);
+
+  async function addItemToCustomer(customerId: string, currentSubtotal: number) {
+    if (!itemName.trim() || !itemPrice) return;
+    setAddingLoading(true);
+    const supabase = createClient();
+    const qty = parseInt(itemQty) || 1;
+    const price = parseFloat(itemPrice.replace(",", "."));
+    await supabase.from("table_customers").update({ subtotal: (currentSubtotal ?? 0) + price * qty } as any).eq("id", customerId);
+    setItemName(""); setItemQty("1"); setItemPrice(""); setAddItemFor(null); setAddingLoading(false);
+    refetch();
+  }
 
   const paymentOptions = [
     { value: "dinheiro", label: "Dinheiro" },
@@ -169,8 +185,48 @@ export default function MesasPage() {
                       </span>
                     </div>
                     <p className="mt-1 text-sm text-muted">{formatCurrency(customer.subtotal ?? 0)}</p>
+                    {addItemFor === customer.id && (
+                      <div className="mt-2 space-y-2 rounded-lg border border-border bg-card p-2 text-sm">
+                        <input
+                          placeholder="Item (ex: Refrigerante)"
+                          value={itemName}
+                          onChange={(e) => setItemName(e.target.value)}
+                          className="w-full rounded border border-border bg-card-hover px-2 py-1 text-xs text-foreground"
+                        />
+                        <div className="flex gap-1">
+                          <input
+                            type="number"
+                            placeholder="Qtd"
+                            min="1"
+                            value={itemQty}
+                            onChange={(e) => setItemQty(e.target.value)}
+                            className="w-12 rounded border border-border bg-card-hover px-2 py-1 text-xs text-foreground"
+                          />
+                          <input
+                            placeholder="Valor"
+                            value={itemPrice}
+                            onChange={(e) => setItemPrice(e.target.value)}
+                            className="flex-1 rounded border border-border bg-card-hover px-2 py-1 text-xs text-foreground"
+                          />
+                        </div>
+                        <div className="flex gap-1">
+                          <button onClick={() => setAddItemFor(null)} className="flex-1 rounded py-1 text-xs text-muted hover:bg-card-hover">Cancelar</button>
+                          <button onClick={() => addItemToCustomer(customer.id, customer.subtotal ?? 0)} disabled={addingLoading} className="flex-1 rounded bg-wine py-1 text-xs font-medium text-white hover:bg-wine-hover disabled:opacity-50">
+                            {addingLoading ? "..." : "OK"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
                     {customer.payment_status === "pago" && customer.payment_method && (
                       <p className="mt-1 text-xs text-muted">{paymentOptions.find(o => o.value === customer.payment_method)?.label ?? customer.payment_method}</p>
+                    )}
+                    {customer.payment_status !== "pago" && addItemFor !== customer.id && (
+                      <button
+                        onClick={() => { setAddItemFor(customer.id); setItemName(""); setItemQty("1"); setItemPrice(""); }}
+                        className="mt-2 w-full rounded-lg border border-border bg-card px-3 py-1 text-xs text-muted hover:bg-card-hover"
+                      >
+                        + Adicionar Item
+                      </button>
                     )}
                     {customer.payment_status !== "pago" && (
                       <div className="mt-2 flex gap-2">
