@@ -216,14 +216,6 @@ export default function CozinhaPage() {
                   </button>
                 </>
               )}
-              {order.status === "pronto" && (
-                <button
-                  onClick={() => returnToKitchen(order.id)}
-                  className="w-full rounded-lg border border-border bg-card-hover px-4 py-2 text-sm font-medium text-muted hover:text-foreground"
-                >
-                  Voltar para Cozinha
-                </button>
-              )}
             </OrderCard>
           ))}
         </div>
