@@ -46,6 +46,12 @@ export default function RetiradasPage() {
     refetch();
   }, [refetch]);
 
+  const returnToKitchen = useCallback(async (orderId: string) => {
+    const supabase = createClient();
+    await supabase.from("orders").update({ status: "em_preparo" }).eq("id", orderId);
+    refetch();
+  }, [refetch]);
+
   return (
     <div>
       <h1 className="text-2xl font-semibold text-foreground">Retiradas</h1>
@@ -122,7 +128,7 @@ export default function RetiradasPage() {
             </div>
           )}
 
-          {selectedOrder && <OrderDetail order={selectedOrder} onFinalize={finalizeOrder} onPaymentChange={changePayment} />}
+          {selectedOrder && <OrderDetail order={selectedOrder} onFinalize={finalizeOrder} onPaymentChange={changePayment} onReturnToKitchen={returnToKitchen} />}
         </div>
       </div>
     </div>
@@ -136,10 +142,11 @@ const paymentOptions = [
   { value: "cartao_debito", label: "Cartão de Débito" },
 ];
 
-function OrderDetail({ order, onFinalize, onPaymentChange }: {
+function OrderDetail({ order, onFinalize, onPaymentChange, onReturnToKitchen }: {
   order: Order;
   onFinalize: (id: string) => void;
   onPaymentChange: (id: string, method: string) => void;
+  onReturnToKitchen: (id: string) => void;
 }) {
   const [addingItem, setAddingItem] = useState(false);
   const [itemName, setItemName] = useState("");
@@ -268,12 +275,20 @@ function OrderDetail({ order, onFinalize, onPaymentChange }: {
           Imprimir Pedido
         </button>
         {order.status === "pronto" && (
-          <button
-            onClick={() => onFinalize(order.id)}
-            className="w-full rounded-lg bg-wine px-4 py-2 text-sm font-medium text-white hover:bg-wine-hover"
-          >
-            Finalizar Retirada
-          </button>
+          <>
+            <button
+              onClick={() => onFinalize(order.id)}
+              className="w-full rounded-lg bg-wine px-4 py-2 text-sm font-medium text-white hover:bg-wine-hover"
+            >
+              Finalizar Retirada
+            </button>
+            <button
+              onClick={() => onReturnToKitchen(order.id)}
+              className="w-full rounded-lg border border-border bg-card-hover px-4 py-2 text-sm font-medium text-muted hover:text-foreground"
+            >
+              Voltar para Cozinha
+            </button>
+          </>
         )}
       </div>
     </div>

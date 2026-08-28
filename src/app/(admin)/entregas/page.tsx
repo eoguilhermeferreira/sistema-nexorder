@@ -59,6 +59,12 @@ export default function EntregasPage() {
     refetch();
   }, [refetch]);
 
+  const returnToKitchen = useCallback(async (orderId: string) => {
+    const supabase = createClient();
+    await supabase.from("orders").update({ status: "em_preparo" }).eq("id", orderId);
+    refetch();
+  }, [refetch]);
+
   return (
     <div>
       <h1 className="text-2xl font-semibold text-foreground">Entregas</h1>
@@ -154,7 +160,7 @@ export default function EntregasPage() {
           )}
 
           {selectedOrder && (
-            <OrderDetail order={selectedOrder} onDispatch={dispatchOrder} onFinalize={finalizeOrder} onPaymentChange={changePayment} />
+            <OrderDetail order={selectedOrder} onDispatch={dispatchOrder} onFinalize={finalizeOrder} onPaymentChange={changePayment} onReturnToKitchen={returnToKitchen} />
           )}
         </div>
       </div>
@@ -174,11 +180,13 @@ function OrderDetail({
   onDispatch,
   onFinalize,
   onPaymentChange,
+  onReturnToKitchen,
 }: {
   order: Order;
   onDispatch: (id: string) => void;
   onFinalize: (id: string) => void;
   onPaymentChange: (id: string, method: string) => void;
+  onReturnToKitchen: (id: string) => void;
 }) {
   const address = order.addresses?.[0];
   const [addingItem, setAddingItem] = useState(false);
@@ -322,12 +330,20 @@ function OrderDetail({
           Imprimir Pedido
         </button>
         {order.status === "pronto" && (
-          <button
-            onClick={() => onDispatch(order.id)}
-            className="w-full rounded-lg bg-wine px-4 py-2 text-sm font-medium text-white hover:bg-wine-hover"
-          >
-            Saiu para Entrega
-          </button>
+          <>
+            <button
+              onClick={() => onDispatch(order.id)}
+              className="w-full rounded-lg bg-wine px-4 py-2 text-sm font-medium text-white hover:bg-wine-hover"
+            >
+              Saiu para Entrega
+            </button>
+            <button
+              onClick={() => onReturnToKitchen(order.id)}
+              className="w-full rounded-lg border border-border bg-card-hover px-4 py-2 text-sm font-medium text-muted hover:text-foreground"
+            >
+              Voltar para Cozinha
+            </button>
+          </>
         )}
         {order.status === "saiu_entrega" && (
           <button
