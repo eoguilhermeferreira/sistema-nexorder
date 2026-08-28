@@ -181,6 +181,31 @@ function OrderDetail({
   onPaymentChange: (id: string, method: string) => void;
 }) {
   const address = order.addresses?.[0];
+  const [addingItem, setAddingItem] = useState(false);
+  const [itemName, setItemName] = useState("");
+  const [itemQty, setItemQty] = useState("1");
+  const [itemPrice, setItemPrice] = useState("");
+  const [addingLoading, setAddingLoading] = useState(false);
+
+  async function addItem() {
+    if (!itemName.trim() || !itemPrice) return;
+    setAddingLoading(true);
+    const supabase = createClient();
+    const qty = parseInt(itemQty) || 1;
+    const price = parseFloat(itemPrice.replace(",", "."));
+    await (supabase as any).from("order_items").insert({
+      order_id: order.id,
+      product_name: itemName.trim(),
+      category_name: null,
+      quantity: qty,
+      price,
+      flavors: [],
+      additions: [],
+      removed_ingredients: [],
+    });
+    await supabase.from("orders").update({ total: order.total + price * qty }).eq("id", order.id);
+    setItemName(""); setItemQty("1"); setItemPrice(""); setAddingItem(false); setAddingLoading(false);
+  }
 
   return (
     <div className="rounded-xl border border-border bg-card p-4">
@@ -247,7 +272,49 @@ function OrderDetail({
 
       {order.notes && <p className="mt-3 text-sm italic text-muted">Obs: {order.notes}</p>}
 
+      {addingItem && (
+        <div className="mt-3 space-y-2 rounded-lg border border-border bg-card-hover p-3 text-sm">
+          <p className="font-medium text-foreground">Adicionar item</p>
+          <input
+            placeholder="Nome do item (ex: Refrigerante)"
+            value={itemName}
+            onChange={(e) => setItemName(e.target.value)}
+            className="w-full rounded-lg border border-border bg-card px-3 py-1.5 text-sm text-foreground"
+          />
+          <div className="flex gap-2">
+            <input
+              type="number"
+              placeholder="Qtd"
+              min="1"
+              value={itemQty}
+              onChange={(e) => setItemQty(e.target.value)}
+              className="w-16 rounded-lg border border-border bg-card px-3 py-1.5 text-sm text-foreground"
+            />
+            <input
+              placeholder="Valor (ex: 6,00)"
+              value={itemPrice}
+              onChange={(e) => setItemPrice(e.target.value)}
+              className="flex-1 rounded-lg border border-border bg-card px-3 py-1.5 text-sm text-foreground"
+            />
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => setAddingItem(false)} className="flex-1 rounded-lg border border-border py-1.5 text-sm text-muted hover:bg-card">Cancelar</button>
+            <button onClick={addItem} disabled={addingLoading} className="flex-1 rounded-lg bg-wine py-1.5 text-sm font-medium text-white hover:bg-wine-hover disabled:opacity-50">
+              {addingLoading ? "..." : "Confirmar"}
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="mt-4 flex flex-col gap-2">
+        {!addingItem && (
+          <button
+            onClick={() => setAddingItem(true)}
+            className="w-full rounded-lg border border-border bg-card-hover px-4 py-2 text-sm font-medium text-foreground hover:bg-border"
+          >
+            + Adicionar Item
+          </button>
+        )}
         <button
           onClick={() => printOrder(order)}
           className="w-full rounded-lg bg-card-hover px-4 py-2 text-sm font-medium text-foreground hover:bg-border"
