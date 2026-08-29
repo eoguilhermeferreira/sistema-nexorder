@@ -625,19 +625,19 @@ function PizzaSection({
         />
       </div>
 
-      {/* add to cart */}
+      {/* add to cart — sticky so it's always visible once a flavor is selected */}
       {canAdd && (
-        <div className="flex items-center gap-3 rounded-xl border border-wine bg-card p-3">
+        <div className="sticky bottom-4 z-20 flex items-center gap-3 rounded-2xl border border-wine bg-background p-3 shadow-2xl">
           <div className="flex items-center gap-2">
             <button onClick={() => setQuantity((q) => Math.max(1, q - 1))} className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card-hover text-foreground">−</button>
-            <span className="w-5 text-center text-sm font-semibold">{quantity}</span>
+            <span className="w-5 text-center text-sm font-semibold text-foreground">{quantity}</span>
             <button onClick={() => setQuantity((q) => q + 1)} className="flex h-9 w-9 items-center justify-center rounded-full border border-wine bg-wine/10 text-wine">+</button>
           </div>
           <button
             onClick={addToCart}
-            className="flex-1 rounded-xl bg-wine px-4 py-3 text-sm font-semibold text-white active:scale-[0.98]"
+            className="flex-1 rounded-xl bg-wine px-4 py-3 text-sm font-semibold text-white active:scale-[0.98] transition-transform"
           >
-            {added ? "Adicionado!" : `Adicionar · ${formatCurrency((basePrice + addonsTotal) * quantity)}`}
+            {added ? "✓ Adicionado!" : `Adicionar · ${formatCurrency((basePrice + addonsTotal) * quantity)}`}
           </button>
         </div>
       )}
