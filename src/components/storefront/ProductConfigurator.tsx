@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { Product, Flavor, Addon, AddonSelection, AddonSizePrice } from "@/types/domain";
 import { formatCurrency } from "@/lib/format";
 import { useCart } from "@/contexts/CartContext";
@@ -453,6 +453,8 @@ function RegularConfigurator({
     [categoryAddons]
   );
 
+  const scrollRef = useRef<HTMLDivElement>(null);
+
   const [sizeId, setSizeId] = useState<string>(sizes[0]?.id ?? "");
   const [selectedFlavorIds, setSelectedFlavorIds] = useState<string[]>([]);
   const [expandedFlavorId, setExpandedFlavorId] = useState<string | null>(null);
@@ -492,7 +494,13 @@ function RegularConfigurator({
       }
       if (prev.length >= maxFlavors) return prev;
       setExpandedFlavorId(id);
-      return [...prev, id];
+      const next = [...prev, id];
+      if (next.length >= maxFlavors) {
+        setTimeout(() => {
+          scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+        }, 120);
+      }
+      return next;
     });
   }
 
@@ -576,7 +584,7 @@ function RegularConfigurator({
         </div>
 
         {/* scrollable body */}
-        <div className="flex-1 overflow-y-auto">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto">
 
           {/* TAMANHO */}
           {isPizza && sizes.length > 0 && (
@@ -625,6 +633,25 @@ function RegularConfigurator({
                   onToggleIngredient={(name) => toggleIngredient(flavor.id, name)}
                 />
               ))}
+            </div>
+          )}
+
+          {/* quick-add banner when flavors are ready */}
+          {isPizza && selectedFlavorIds.length > 0 && (
+            <div className="border-b border-wine/20 bg-wine/5 px-4 py-3 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-wine">
+                  {selectedFlavorIds.length >= maxFlavors ? "Sabores selecionados!" : `${selectedFlavorIds.length}/${maxFlavors} sabores`}
+                </p>
+                <p className="text-xs text-muted">Role para personalizar ou adicione já</p>
+              </div>
+              <button
+                onClick={confirm}
+                disabled={!canConfirm}
+                className="shrink-0 rounded-xl bg-wine px-4 py-2 text-xs font-bold text-white hover:bg-wine-hover disabled:opacity-40"
+              >
+                Adicionar · {formatCurrency(unitPrice * quantity)}
+              </button>
             </div>
           )}
 

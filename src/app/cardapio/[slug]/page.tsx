@@ -207,7 +207,7 @@ function CardapioContent({ storefront }: { storefront: ReturnType<typeof useStor
       </div>
 
       {/* menu */}
-      <div className="mt-4 px-4 pb-32">
+      <div className="mt-4 px-4 pb-24">
         <MenuBrowser categories={categories} products={products} flavors={flavors} addons={addons} flavorSizePrices={flavorSizePrices} addonSizePrices={addonSizePrices} />
       </div>
 
@@ -223,23 +223,29 @@ function CardapioContent({ storefront }: { storefront: ReturnType<typeof useStor
         </div>
       )}
 
-      {/* sticky cart button */}
+      {/* floating cart FAB */}
       {items.length > 0 && company.is_open && (
-        <div
-          className="fixed bottom-0 left-0 right-0 z-40 px-4 pb-4 pt-2 bg-gradient-to-t from-background to-transparent"
-          style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
+        <button
+          onClick={() => setShowCheckout(true)}
+          className="fixed bottom-6 right-4 z-40 flex items-center gap-2 rounded-2xl bg-wine pl-3 pr-4 py-3 text-white shadow-2xl active:scale-95 transition-transform"
+          style={{ bottom: "max(1.5rem, env(safe-area-inset-bottom, 1.5rem))" }}
         >
-          <button
-            onClick={() => setShowCheckout(true)}
-            className="flex w-full items-center justify-between rounded-2xl bg-wine px-5 py-4 text-white shadow-xl active:scale-[0.98] transition-transform"
-          >
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/20 text-xs font-bold">
-              {items.length}
+          {/* bag icon */}
+          <span className="relative flex h-8 w-8 items-center justify-center">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+              <line x1="3" y1="6" x2="21" y2="6"/>
+              <path d="M16 10a4 4 0 0 1-8 0"/>
+            </svg>
+            <span className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-white text-[10px] font-bold text-wine">
+              {items.reduce((s, i) => s + i.quantity, 0)}
             </span>
-            <span className="text-sm font-semibold">Ver carrinho</span>
-            <span className="text-sm font-semibold">{formatCurrency(total)}</span>
-          </button>
-        </div>
+          </span>
+          <div className="text-left">
+            <p className="text-xs font-bold leading-none">{formatCurrency(total)}</p>
+            <p className="text-[10px] opacity-80 leading-none mt-0.5">Ver sacola</p>
+          </div>
+        </button>
       )}
 
       {showCheckout && (
